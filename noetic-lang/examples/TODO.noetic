@@ -1,0 +1,3 @@
+{
+  "todo": "REPLACE the contents of this file with an example Noetic Codex for an 'Agentic To-Do App' style Noetic Flow (essentially an app definition per the schema defined by Noetic Language (in the parent directory to this one, 'language'), including the 'flow' property that outlines the agentic flow behavior for this 'app')."
+}

@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.noetic": "json"
+    },
+    "search.exclude": {
+        "**/*.noetic": false
+    }
+}
