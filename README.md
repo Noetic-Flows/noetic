@@ -26,7 +26,7 @@ Just as HTML defines the structure of the web, the Noetic Language is a standard
 **The Player.**
 This is the reference implementation of the runtime. It reads a Codex and simulates the agent in real-time. It handles the heavy lifting—memory management, planning, and UI rendering—so you can focus on designing the intelligence.
 
-> _Note: While the reference engine is currently built in Python, the Noetic Language is platform-agnostic. Future engines will bring Noetic Flows to mobile, web, and embedded environments._
+> _Note: While the reference engine is currently built in Python, the Noetic Language is platform-agnostic. Future engines will bring Noetic Flows to mobile and other environments._
 
 ---
 
@@ -52,7 +52,6 @@ We are building the **Noetic Flow Library**, a decentralized community hub where
 **No compilation. No app stores. Just pure intent.**
 
 ---
-
 
 ## Getting Started
 
