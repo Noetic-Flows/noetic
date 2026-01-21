@@ -31,5 +31,12 @@ class Column(Container):
 class Row(Container):
     type: Literal["Row"] = "Row"
 
+class ForEach(Component):
+    type: Literal["ForEach"] = "ForEach"
+    items: Union[List[Any], Binding]
+    template: Union[Component, Any] # The template to render for each item
+    var: str = "item" # The variable name to expose in the child scope
+
 # Update forward refs
 Container.model_rebuild()
+ForEach.model_rebuild()

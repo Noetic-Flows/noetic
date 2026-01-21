@@ -52,7 +52,7 @@ class CognitiveSystem:
         if step.skill_id not in agent.allowed_skills:
             logger.warning(f"Agent {agent.id} not allowed to use {step.skill_id}")
 
-        context = SkillContext(agent_id=agent.id)
+        context = SkillContext(agent_id=agent.id, store=self.knowledge)
         logger.info(f"Executing Skill: {step.skill_id}")
         
         try:

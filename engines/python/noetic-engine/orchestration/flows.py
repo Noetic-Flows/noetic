@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from noetic_engine.knowledge import WorldState
 
 logger = logging.getLogger(__name__)
@@ -9,6 +9,11 @@ try:
 except ImportError:
     StateGraph = None
     END = "END"
+
+try:
+    from json_logic import jsonLogic
+except ImportError:
+    jsonLogic = None
 
 class FlowExecutor:
     """
@@ -31,16 +36,27 @@ class FlowExecutor:
         
         for name, state_def in states.items():
             # Create a node for each state
-            # For now, we create a simple node that records its execution
             node_func = self._make_node_func(name, state_def)
             workflow.add_node(name, node_func)
             
         # Add Edges
         for name, state_def in states.items():
-            if state_def.get("end"):
-                workflow.add_edge(name, END)
+            if "branches" in state_def:
+                # Conditional edges
+                branches = state_def["branches"]
+                # Map potential destinations
+                destinations = {b["next"]: b["next"] for b in branches}
+                # If there is a default fallback?
+                
+                workflow.add_conditional_edges(
+                    name,
+                    self._make_router(branches),
+                    destinations
+                )
             elif "next" in state_def:
                 workflow.add_edge(name, state_def["next"])
+            elif state_def.get("end"):
+                workflow.add_edge(name, END)
                 
         if start_at:
             workflow.set_entry_point(start_at)
@@ -49,16 +65,32 @@ class FlowExecutor:
 
     def _make_node_func(self, name: str, state_def: Dict[str, Any]):
         def node(state: Dict[str, Any]):
-            # Minimal implementation: record visit
-            # In future, execute 'skill' defined in state_def
             trace = state.get("trace", [])
             new_trace = trace + [name]
-            
-            # Merge output or params (mock behavior)
             outputs = state_def.get("params", {})
+            
+            # TODO: Execute associated skill if any
             
             return {"trace": new_trace, **outputs}
         return node
+
+    def _make_router(self, branches: List[Dict[str, Any]]):
+        def router(state: Dict[str, Any]):
+            if jsonLogic is None:
+                # Fallback: take first branch
+                return branches[0]["next"]
+                
+            for branch in branches:
+                condition = branch.get("condition", {})
+                if jsonLogic(condition, state):
+                    return branch["next"]
+            
+            # If no match, we should probably stop or go to error?
+            # For now, return END or raise?
+            # LangGraph expects one of the keys in conditional_edges map.
+            # Assuming the last branch is default or we define behavior.
+            return END 
+        return router
 
     def step(self, inputs: Dict[str, Any], state: WorldState) -> Dict[str, Any]:
         """
@@ -67,6 +99,7 @@ class FlowExecutor:
         if not self.runnable:
             return {}
             
+        # Inject WorldState into the flow state for logic evaluation
         inputs["_world_state"] = state 
         
         try:

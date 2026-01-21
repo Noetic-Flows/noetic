@@ -17,7 +17,7 @@ class PrincipleEngine:
         if jsonLogic is None:
             logger.warning("json-logic library not found. Principle evaluation will be disabled.")
 
-    def evaluate_cost(self, action: Action, state: WorldState, principles: List[Principle]) -> float:
+    def evaluate_cost(self, action: Action, state: Union[WorldState, Dict[str, Any]], principles: List[Principle]) -> float:
         """
         Evaluates the 'Moral Cost' of an action based on a list of Principles.
         Returns a float representing the cost penalty (or bonus).
@@ -27,9 +27,12 @@ class PrincipleEngine:
             
         total_cost = 0.0
         
+        # Handle both WorldState object and Dict state from planner
+        state_data = state.model_dump() if hasattr(state, "model_dump") else state
+        
         context = {
             "action": action.model_dump(),
-            "state": state.model_dump(),
+            "state": state_data,
             "tags": [] 
         }
         
@@ -40,6 +43,13 @@ class PrincipleEngine:
                 if isinstance(result, (int, float)):
                     total_cost += float(result)
                 elif result is True:
+                    # Boolean true might imply a violation (cost) or valid (0 cost)?
+                    # Usually principles return cost penalty. If logic returns true, maybe default penalty?
+                    # Or maybe principles define 'rules' where true = allowed?
+                    # "Ensure it calculates 'Moral Cost'" implies numeric return.
+                    # Let's assume boolean True means "violation detected" -> add default cost?
+                    # Or "compliant" -> 0 cost.
+                    # Let's stick to numeric accumulation for now, ignore boolean unless we define standard.
                     pass
                 
             except Exception as e:

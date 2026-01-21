@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Union
-from .schema import Component, Binding, Text, Button, Column, Row, Container
+from .schema import Component, Binding, Text, Button, Column, Row, Container, ForEach
 from .bindings import resolve_pointer
 from noetic_engine.knowledge import WorldState
 
@@ -48,5 +48,18 @@ class CanvasRenderer:
         elif isinstance(node, Row):
             children = [self._visit(child, context) for child in node.children]
             return c.Div(components=children, class_name="flex flex-row")
+            
+        elif isinstance(node, ForEach):
+            items = self._resolve(node.items, context)
+            if not isinstance(items, list):
+                items = []
+            
+            children = []
+            for item in items:
+                child_context = context.copy()
+                child_context[node.var] = item
+                children.append(self._visit(node.template, child_context))
+            
+            return c.Div(components=children, class_name="flex flex-col")
 
         return c.Text(text=f"Unknown Component: {node.type}")

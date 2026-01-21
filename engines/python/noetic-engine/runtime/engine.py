@@ -4,7 +4,9 @@ from typing import Optional
 from noetic_engine.knowledge import KnowledgeStore
 from noetic_engine.skills import SkillRegistry
 from noetic_engine.skills.library.system.control import WaitSkill, LogSkill
+from noetic_engine.skills.library.memory import MemorizeSkill, RecallSkill
 from noetic_engine.orchestration import Planner, AgentManager, FlowManager
+from noetic_engine.orchestration.principles import PrincipleEngine
 from .reflex import ReflexSystem
 from .cognitive import CognitiveSystem
 from .scheduler import Scheduler
@@ -16,14 +18,20 @@ class NoeticEngine:
         # 1. Initialize Core Subsystems
         self.knowledge = KnowledgeStore(db_url=db_url)
         self.skills = SkillRegistry()
-        self.planner = Planner()
         self.agent_manager = AgentManager()
         self.flow_manager = FlowManager()
+        self.principle_engine = PrincipleEngine()
+        
+        # Planner requires skills and principles
+        self.planner = Planner(self.skills, self.principle_engine)
+        
         self.latest_ui = None
         
         # 2. Register core skills
         self.skills.register(WaitSkill())
         self.skills.register(LogSkill())
+        self.skills.register(MemorizeSkill())
+        self.skills.register(RecallSkill())
         
         # 3. Initialize Loops
         self.reflex = ReflexSystem()
