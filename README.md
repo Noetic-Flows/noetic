@@ -24,7 +24,13 @@ Just as HTML defines the structure of the web, the Noetic Language is a standard
 ### 2. The Noetic Engine (`/noetic-python`)
 
 **The Player.**
-This is the reference implementation of the runtime. It reads a Codex and simulates the agent in real-time. It handles the heavy lifting—memory management, planning, and UI rendering—so you can focus on designing the intelligence.
+This is the reference implementation of the runtime. It reads a Codex and simulates the agent in real-time. It handles the heavy lifting through five core subsystems:
+
+- **Knowledge:** A temporal graph memory of the world.
+- **Orchestration:** The "Brain" that plans actions to achieve goals.
+- **Conscience:** The "Axiological Engine" that enforces safety by evaluating the cost of actions, per Principles.
+- **Runtime:** The execution kernel managing the reflex and cognitive loops.
+- **Canvas:** The server-driven UI renderer (or local simulacrum).
 
 > _Note: While the reference engine is currently built in Python, the Noetic Language is platform-agnostic. Future engines will bring Noetic Flows to mobile and other environments._
 
