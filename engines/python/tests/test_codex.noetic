@@ -17,6 +17,7 @@
         "principles": [
           {
             "id": "p1",
+            "affects": "val.kindness",
             "description": "Be nice",
             "logic": {"==": [1, 1]}
           }

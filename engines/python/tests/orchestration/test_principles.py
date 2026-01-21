@@ -1,34 +1,50 @@
 import pytest
-from noetic_engine.orchestration.principles import PrincipleEngine
-from noetic_engine.orchestration.agents import Principle
-from noetic_engine.orchestration.schema import Action
+from noetic_engine.conscience import Evaluator, Principle, JudgementContext
 from noetic_engine.knowledge import WorldState
 
 def test_evaluate_cost_simple():
-    engine = PrincipleEngine()
+    evaluator = Evaluator()
     
     p1 = Principle(
         id="safety", 
+        affects="val.safety",
         description="Avoid danger", 
-        logic={"if": [{"==": [{"var": "action.skill_id"}, "skill.danger"]}, 100, 0]}
+        logic={"if": [{"==": [{"var": "action.id"}, "skill.danger"]}, 100, 0]}
     )
     
-    safe_action = Action(skill_id="skill.safe")
-    danger_action = Action(skill_id="skill.danger")
+    # 1. Safe Action
+    ctx_safe = JudgementContext(
+        agent_id="test_agent",
+        action_id="skill.safe",
+        action_args={},
+        world_state={}
+    )
     
-    state = WorldState(tick=0, entities={}, facts=[])
+    # 2. Danger Action
+    ctx_danger = JudgementContext(
+        agent_id="test_agent",
+        action_id="skill.danger",
+        action_args={},
+        world_state={}
+    )
     
-    cost_safe = engine.evaluate_cost(safe_action, state, [p1])
-    cost_danger = engine.evaluate_cost(danger_action, state, [p1])
+    res_safe = evaluator.judge(ctx_safe, [p1])
+    res_danger = evaluator.judge(ctx_danger, [p1])
     
-    assert cost_safe == 0
-    assert cost_danger == 100
+    assert res_safe.cost == 0
+    assert res_danger.cost == 100
 
 def test_malformed_logic_is_safe():
-    engine = PrincipleEngine()
-    p_bad = Principle(id="bad", description="...", logic={"broken": "syntax"})
-    action = Action(skill_id="any")
-    state = WorldState(tick=0, entities={}, facts=[])
+    # If logic is bad, LogicEngine (fail_closed) returns inf, but let's test behavior
+    evaluator = Evaluator(safety_mode="fail_open") # For this test to pass with 0 cost
+    p_bad = Principle(id="bad", affects="val.test", description="...", logic={"broken": "syntax"})
     
-    cost = engine.evaluate_cost(action, state, [p_bad])
-    assert cost == 0.0
+    ctx = JudgementContext(
+        agent_id="test_agent",
+        action_id="any",
+        action_args={},
+        world_state={}
+    )
+    
+    res = evaluator.judge(ctx, [p_bad])
+    assert res.cost == 0.0

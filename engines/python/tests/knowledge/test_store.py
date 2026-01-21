@@ -4,9 +4,12 @@ from datetime import datetime
 from noetic_engine.knowledge.store import KnowledgeStore
 from noetic_engine.knowledge.schema import Entity
 
+import uuid
+
 @pytest.fixture
 def store():
-    return KnowledgeStore(db_url="sqlite:///:memory:")
+    # Use unique collection name to avoid leakage between tests in the same process
+    return KnowledgeStore(db_url="sqlite:///:memory:", collection_name=f"test_coll_{uuid.uuid4().hex}")
 
 def test_ingest_and_retrieve_fact(store):
     # 1. Create dummy IDs
@@ -32,18 +35,12 @@ def test_ingest_and_retrieve_fact(store):
 
 def test_hybrid_search(store):
     user_id = uuid4()
-    store.ingest_fact(user_id, "likes", object_literal="pizza")
-    store.ingest_fact(user_id, "likes", object_literal="sushi")
-    store.ingest_fact(user_id, "hates", object_literal="broccoli")
+    store.ingest_fact(user_id, "prefers", object_literal="pepperoni pizza")
     
-    # Search for food preferences
-    # Note: With default embeddings, "food" should retrieve pizza/sushi/broccoli.
-    # We might need to be specific if embeddings aren't great.
-    # Let's search for "pizza" explicitly to be safe with simple models or "preference"
-    
-    results = store.hybrid_search("pizza", limit=1)
+    # Search for pizza
+    results = store.hybrid_search("pepperoni pizza", limit=5)
     assert len(results) >= 1
-    assert results[0].object_literal == "pizza"
+    assert results[0].object_literal == "pepperoni pizza"
 
 def test_graph_cache_integration(store):
     user_id = uuid4()

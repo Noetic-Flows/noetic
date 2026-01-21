@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from noetic_engine.skills.adapter_mcp import McpSkillAdapter
 from noetic_engine.skills.interfaces import SkillResult, SkillContext
 
@@ -9,7 +9,7 @@ async def test_mcp_adapter_success():
     with patch("noetic_engine.skills.adapter_mcp.httpx") as mock_httpx:
         # Setup Mock Client
         mock_client = AsyncMock()
-        mock_response = AsyncMock()
+        mock_response = MagicMock() # Use MagicMock for response
         mock_response.json.return_value = {
             "result": {
                 "content": [{"type": "text", "text": "Hello MCP"}]
