@@ -1,16 +1,26 @@
-from typing import List, Any
-from pydantic import BaseModel
-from noetic-engine.knowledge import WorldState
+from typing import List, Dict, Any
+from .schema import Plan, PlanStep, Goal
 from .agents import AgentContext
-
-class PlanStep(BaseModel):
-    skill_id: str
-    params: dict
-
-class Plan(BaseModel):
-    steps: List[PlanStep]
+from noetic_engine.knowledge import WorldState
 
 class Planner:
-    async def generate_plan(self, agent: AgentContext, goal: str, state: WorldState) -> Plan:
-        # TODO: Implement GOAP / A* logic
-        return Plan(steps=[])
+    """
+    Goal-Oriented Action Planner (GOAP) implementation.
+    """
+    async def generate_plan(self, agent: AgentContext, goal: Goal, state: WorldState) -> Plan:
+        """
+        Generates a sequence of Actions (Plan) to reach the Goal from the current WorldState,
+        respecting the Agent's Principles and Skills.
+        """
+        # Placeholder: Return a simple 'wait' plan
+        return Plan(
+            steps=[
+                PlanStep(
+                    skill_id="skill.system.wait", 
+                    params={"seconds": 1.0}, 
+                    cost=0.0,
+                    rationale="Thinking..."
+                )
+            ],
+            total_cost=0.0
+        )

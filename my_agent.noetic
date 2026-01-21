@@ -1,0 +1,24 @@
+{
+  "agents": [
+    {
+      "id": "agent-1",
+      "system_prompt": "You are a helpful assistant.",
+      "allowed_skills": ["skill.system.wait", "skill.debug.log"],
+      "principles": []
+    }
+  ],
+  "canvas": {
+    "type": "Column",
+    "children": [
+      {
+        "type": "Text",
+        "content": "Hello Noetic"
+      },
+      {
+        "type": "Button",
+        "label": "Click Me",
+        "action_id": "click_1"
+      }
+    ]
+  }
+}

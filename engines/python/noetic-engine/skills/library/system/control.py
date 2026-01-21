@@ -47,3 +47,21 @@ class LogSkill(Skill):
             cost=0.0,
             latency_ms=int(elapsed)
         )
+
+class PlaceholderSkill(Skill):
+    id = "skill.placeholder"
+    description = "A placeholder for dynamically loaded skills."
+    schema = {}
+
+    def __init__(self, id: str, description: str, **kwargs):
+        self.id = id
+        self.description = description
+        self.metadata = kwargs
+
+    async def execute(self, context: SkillContext, **kwargs) -> SkillResult:
+        # Just return success for now
+        return SkillResult(
+            success=True,
+            data={"status": "placeholder_executed", "args": kwargs},
+            cost=0.0
+        )

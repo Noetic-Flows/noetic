@@ -1,7 +1,11 @@
 import argparse
 import asyncio
 import sys
-from noetic-engine.runtime import NoeticEngine
+import logging
+from noetic_engine.runtime import NoeticEngine
+from noetic_engine.loader import NoeticLoader
+
+logging.basicConfig(level=logging.INFO)
 
 def main():
     parser = argparse.ArgumentParser(description="Noetic Engine Reference Implementation")
@@ -13,8 +17,9 @@ def main():
     # Initialize Engine
     engine = NoeticEngine()
     
-    # TODO: Load Codex into Engine
-    # engine.load_codex(args.codex)
+    # Load Codex
+    loader = NoeticLoader()
+    loader.load(engine, args.codex)
     
     try:
         asyncio.run(engine.start())

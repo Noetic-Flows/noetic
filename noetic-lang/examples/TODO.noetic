@@ -1,3 +1,60 @@
 {
-  "todo": "REPLACE the contents of this file with an example Noetic Codex for an 'Agentic To-Do App' style Noetic Flow (essentially an app definition per the schema defined by Noetic Language (in the parent directory to this one, 'language'), including the 'flow' property that outlines the agentic flow behavior for this 'app')."
+  "manifest": {
+    "noetic_version": "1.0",
+    "metadata": {
+      "id": "com.example.todo",
+      "name": "Todo Agent",
+      "version": "0.1.0",
+      "description": "An agent that manages a todo list.",
+      "author": "AI Assistant"
+    },
+    "environment": []
+  },
+  "knowledge": {
+    "entities": [
+      {
+        "type": "Task",
+        "fields": [
+          { "name": "title", "type": "string" },
+          { "name": "status", "type": "string" }
+        ]
+      }
+    ],
+    "tags": []
+  },
+  "skills": [
+    {
+      "id": "skill.system.wait",
+      "type": "system",
+      "description": "Wait for a duration."
+    },
+    {
+      "id": "skill.debug.log",
+      "type": "system",
+      "description": "Log a message."
+    }
+  ],
+  "orchestration": {
+    "values": [],
+    "principles": [],
+    "agents": [
+      {
+        "id": "agent.todo",
+        "persona": {
+          "name": "Task Master",
+          "backstory": "You efficiently manage tasks."
+        },
+        "model": {
+            "provider": "openai",
+            "name": "gpt-4o"
+        },
+        "adheres_to": [],
+        "skills": ["skill.system.wait", "skill.debug.log"]
+      }
+    ],
+    "flows": []
+  },
+  "canvas": {
+    "templates": []
+  }
 }

@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 from .interfaces import Skill
 
 class SkillRegistry:
@@ -17,3 +17,10 @@ class SkillRegistry:
     def has_permission(self, agent_id: str, skill_id: str) -> bool:
         # TODO: Integrate with Agent definition to check allowlist
         return True
+
+    def poll_inputs(self) -> List[Any]:
+        """
+        Polls active I/O skills for raw input events (e.g. key presses, sensor data).
+        """
+        # TODO: Iterate over IO skills and collect events
+        return []

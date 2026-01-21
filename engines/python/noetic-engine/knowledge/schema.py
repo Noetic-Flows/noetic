@@ -21,9 +21,15 @@ class Fact(BaseModel):
     valid_from: datetime
     valid_until: Optional[datetime] = None
 
+class Event(BaseModel):
+    id: UUID
+    type: str
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: datetime
+
 class WorldState(BaseModel):
     tick: int
     entities: Dict[UUID, Entity]
     facts: List[Fact]
-    # event_queue: List[Event] # TODO: Define Event in runtime or shared module
-    # active_goals: List[Goal] # TODO: Define Goal in orchestration or shared module
+    event_queue: List[Event] = Field(default_factory=list)
+    # active_goals: List[Goal]
