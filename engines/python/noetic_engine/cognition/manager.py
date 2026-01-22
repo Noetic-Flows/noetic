@@ -1,5 +1,5 @@
 from typing import Dict, Optional
-from .agents import AgentContext
+from noetic_engine.stanzas.agents import AgentContext
 
 class AgentManager:
     def __init__(self):

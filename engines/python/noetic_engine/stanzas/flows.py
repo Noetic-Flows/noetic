@@ -83,34 +83,32 @@ class FlowExecutor:
             return END 
         return router
 
-        async def step(self, inputs: Dict[str, Any], state: WorldState) -> Dict[str, Any]:
+    async def step(self, inputs: Dict[str, Any], state: WorldState) -> Dict[str, Any]:
 
-            """
+        """
 
-            Executes one step (or run) of the flow.
+        Executes one step (or run) of the flow.
 
-            """
+        """
 
-            if not self.runnable:
+        if not self.runnable:
 
-                return {}
-
-                
-
-            # Inject WorldState into the flow state for logic evaluation
-
-            inputs["_world_state"] = state 
+            return {}
 
             
 
-            try:
+        # Inject WorldState into the flow state for logic evaluation
 
-                return await self.runnable.ainvoke(inputs)
+        inputs["_world_state"] = state 
 
-            except Exception as e:
+        
 
-                logger.error(f"Error executing flow: {e}")
+        try:
 
-                return {}
+            return await self.runnable.ainvoke(inputs)
 
-    
+        except Exception as e:
+
+            logger.error(f"Error executing flow: {e}")
+
+            return {}

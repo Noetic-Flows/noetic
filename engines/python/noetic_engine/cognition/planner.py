@@ -1,7 +1,7 @@
 import heapq
 from typing import List, Dict, Any, Set, Tuple, Optional
-from .schema import Plan, PlanStep, Goal, Action
-from .agents import AgentContext
+from noetic_engine.stanzas.schema import Plan, PlanStep, Goal, Action
+from noetic_engine.stanzas.agents import AgentContext
 from noetic_engine.conscience import Evaluator, JudgementContext, JudgementResult, PolicyViolationError
 from noetic_engine.knowledge import WorldState
 from noetic_engine.skills.registry import SkillRegistry

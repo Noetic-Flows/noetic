@@ -1,27 +1,27 @@
-# Noetic Canvas (`noetic.canvas`)
+# Noetic Stage (`noetic.stage`)
 
 ## Overview
 
-The `noetic.canvas` module is the **Face** of the Noetic Engine. It is responsible for rendering the application's user interface.
+The `noetic.stage` module is the **Face** of the Noetic Engine. It is responsible for rendering the application's user interface.
 
-Unlike traditional UI frameworks (View-Model) or simple Server-Driven UI (JSON View), the Noetic Canvas implements a **Generative, Reflex-Reactive Architecture**.
+Unlike traditional UI frameworks (View-Model) or simple Server-Driven UI (JSON View), the Noetic Stage implements a **Generative, Reflex-Reactive Architecture**.
 
-1. **Generative:** The UI structure is not hardcoded in templates; it is dynamically assembled by the **Reflex System** based on the current `WorldState` and the `canvas.json` Codex definition.
+1. **Generative:** The UI structure is not hardcoded in templates; it is dynamically assembled by the **Reflex System** based on the current `WorldState` and the `stage.json` Codex definition.
 2. **Reflex-Reactive:** The UI runs on the "Reflex Loop" (60Hz). It updates immediately in response to user input (Client-Side Prediction) while asynchronously synchronizing with the "Brain" (Cognitive Loop).
 3. **A2UI Standard:** It utilizes the **Abstract Agent UI (A2UI)** schema, a JSON-based protocol for defining semantic, adaptive interfaces that can be rendered natively on any platform (Web, Mobile, VR).
 
-Crucial: The Agents must use a Skill (MCP) for I/O with the Canvas.
+Crucial: The Agents must use a Skill (MCP) for I/O with the Stage.
 
 ---
 
 ## 1. Architecture: The Reflex Renderer
 
-The Canvas is **not** just a passive display. It is an active system that mediates between the User and the Memory.
+The Stage is **not** just a passive display. It is an active system that mediates between the User and the Memory.
 
 ### The Data Flow
 
 1. **Read:** The Renderer subscribes to `noetic.memory.world_state`.
-2. **Bind:** It parses the Canvas JSON templates (from the Codex), resolving **Binding Objects** against the current World State.
+2. **Bind:** It parses the Stage JSON templates (from the Codex), resolving **Binding Objects** against the current World State.
 3. **Hydrate:** It injects active values into the A2UI Tree.
 4. **Render:** It pushes the hydrated tree to the frontend (FastUI / React).
 5. **Act:** It captures user events, updates the local UI state _instantly_ (Optimistic UI), and flushes the event to the Cognitive Event Queue.
@@ -66,13 +66,13 @@ The Renderer treats the `WorldState` as a single JSON document. When it encounte
 
 For this Python reference implementation, we use **FastUI** (by Pydantic) as the rendering target. This proves that Noetic A2UI can drive a modern, reactive web interface.
 
-### `CanvasRenderer` (`renderer.py`)
+### `StageRenderer` (`renderer.py`)
 
 The main class responsible for the translation layer.
 
 **Logic:**
 
-1. **Load Templates:** Parse `canvas.json` into Pydantic models.
+1. **Load Templates:** Parse `stage.json` into Pydantic models.
 2. **Resolve Context:** Create a `RenderContext` containing the current Entities and Facts.
 3. **Tree Traversal:** Walk the A2UI JSON tree recursively.
 
@@ -108,7 +108,7 @@ Manages the "Game Loop" aspect of the UI.
 - Map A2UI `action_id` strings to FastUI `BackEvent`.
 - When a FastUI event fires, the handler must:
 
-1. Look up the action in the Canvas JSON (from the Codex).
+1. Look up the action in the Stage JSON (from the Codex).
 2. If it's a local action (e.g., "Toggle Details"), update `local_state`.
 3. If it's an agent action (e.g., "Water Plant"), create a `noetic.senses.Event` and push it to `memory.event_queue`.
 
@@ -132,7 +132,7 @@ The renderer must iterate over the list found at `source` and generate a list of
 
 ### Theme Support
 
-Respect the `theme` field in Canvas JSON (in the Codex).
+Respect the `theme` field in Stage JSON (in the Codex).
 
 - If `theme="noetic.themes.dark"`, inject the appropriate CSS classes or FastUI style props into the components.
 
@@ -141,8 +141,8 @@ Respect the `theme` field in Canvas JSON (in the Codex).
 ## 5. Directory Structure
 
 ```text
-/noetic/canvas
-├── __init__.py         # Exports CanvasRenderer
+/noetic/stage
+├── __init__.py         # Exports StageRenderer
 ├── schema.py           # Pydantic Models for A2UI (The Language)
 ├── renderer.py         # Main Logic (A2UI -> FastUI Translator)
 ├── reflex.py           # State merging and Event handling

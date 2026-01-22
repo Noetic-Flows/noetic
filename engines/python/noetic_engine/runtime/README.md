@@ -4,7 +4,7 @@
 
 The `noetic.runtime` module is the **Kernel** of the Noetic Engine. It is the machine that plays the Codex.
 
-While `noetic.orchestration` decides _what_ to do (The Brain), and `noetic.canvas` decides _how_ it looks (The Face), the **Runtime** is responsible for keeping the simulation alive. It manages the event loops, ticking the physics/UI at 60Hz, and asynchronously managing the slow, expensive calls to the Cognitive layer.
+While `noetic.cognition` decides _what_ to do (The Brain), and `noetic.stage` decides _how_ it looks (The Face), the **Runtime** is responsible for keeping the simulation alive. It manages the event loops, ticking the physics/UI at 60Hz, and asynchronously managing the slow, expensive calls to the Cognitive layer.
 
 **Core Responsibility:** To maintain a fluid, responsive simulation (System 1) that never freezes, even while complex reasoning (System 2) is occurring in the background.
 
@@ -22,7 +22,7 @@ The Runtime implements a **Bi-Cameral Execution Model**. We do not use a single 
 - **Tasks:**
 
 1. **Poll Senses:** Check for raw inputs (mouse, keyboard, sensors) from `noetic.skills`.
-2. **Update Canvas:** Re-render the A2UI tree based on current Memory (Optimistic UI).
+2. **Update Stage:** Re-render the A2UI tree based on current Memory (Optimistic UI).
 3. **Client-Side Prediction:** If the user types, update the local state immediately.
 4. **Dispatch:** Push significant events (e.g., "Submit Button Clicked") to the Cognitive Queue.
 
@@ -34,7 +34,7 @@ The Runtime implements a **Bi-Cameral Execution Model**. We do not use a single 
 - **Tasks:**
 
 1. **Observe:** Watch `noetic.memory.event_queue`.
-2. **Plan:** When an event occurs, invoke `noetic.orchestration` to generate a Plan.
+2. **Plan:** When an event occurs, invoke `noetic.cognition` to generate a Plan.
 3. **Act:** Execute the **Skills** dictated by the Plan.
 4. **Write:** Commit results back to Memory.
 
@@ -43,9 +43,9 @@ The Runtime implements a **Bi-Cameral Execution Model**. We do not use a single 
 - **Nature:** State Machine.
 - **Role:** Manages the "Circadian Rhythm" of the engine.
 - **States:**
-    1.  **AWAKE (Active):** High CPU, full attention.
-    2.  **IDLE (Standby):** Low CPU, waiting for input.
-    3.  **REM (Maintenance):** Background processing (Memory Consolidation, Graph Optimization).
+  1. **AWAKE (Active):** High CPU, full attention.
+  2. **IDLE (Standby):** Low CPU, waiting for input.
+  3. **REM (Maintenance):** Background processing (Memory Consolidation, Graph Optimization).
 
 ---
 
@@ -73,13 +73,13 @@ Manages the fast loop.
 
 - **Input Buffer:** Aggregates raw inputs from the Senses layer.
 - **State Merging:** Overlays "Local UI State" (e.g., scroll position, partial text) on top of "World State" before rendering.
-- **Renderer Bridge:** Calls `noetic.canvas.render()` and pushes the result to the client (FastUI).
+- **Renderer Bridge:** Calls `noetic.stage.render()` and pushes the result to the client (FastUI).
 
 ### `CognitiveSystem` (`cognitive.py`)
 
 Manages the slow loop.
 
-- **Orchestrator Bridge:** It holds the reference to the active `FlowExecutor` or `Planner`.
+- **Cognition Bridge:** It holds the reference to the active `FlowExecutor` or `Planner`.
 - **Skill Executor:** This is the **only** component allowed to call `skill.execute()`.
 - _Why?_ To ensure that side effects are strictly ordered and recorded in the Knowledge Graph.
 
@@ -125,14 +125,14 @@ async def run_loop(self):
 
 ## 5. Interaction with Other Modules
 
-- **Orchestration:** The Runtime _calls_ Orchestration. Orchestration never calls Runtime.
-- `plan = orchestration.plan(state)`
+- **Cognition:** The Runtime _calls_ Cognition. Cognition never calls Runtime.
+- `plan = cognition.plan(state)`
 
 - **Skills:** The Runtime acts as the **Invoker**.
 - `result = await skill.execute(context)`
 
-- **Canvas:** The Runtime acts as the **Driver**.
-- `canvas.render(state)`
+- **Stage:** The Runtime acts as the **Driver**.
+- `stage.render(state)`
 
 ---
 

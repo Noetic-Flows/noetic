@@ -1,7 +1,3 @@
-Here is the updated `README.md` for the `noetic.knowledge` module, rewritten to reflect the **AgentProg**, **Tri-Store**, and **Shared Semantic Environment** architecture.
-
----
-
 # Noetic Knowledge Engine (`noetic.knowledge`)
 
 ## Overview
@@ -27,9 +23,9 @@ The module is divided into three functional layers, mimicking the hierarchy of b
 
 This layer implements the **AgentProg** architecture. It treats the Context Window like a CPU Call Stack to enforce strict scoping.
 
-* **Memory Frames:** Context is segmented into nested frames.
-* **Local Scope:** Logs, scratchpad thoughts, and intermediate tool outputs exist *only* within the active frame.
-* **Garbage Collection:** When a sub-task finishes (Frame Pop), all local "noise" is destroyed. Only the explicit **Return Value** is promoted to the Heap.
+- **Memory Frames:** Context is segmented into nested frames.
+- **Local Scope:** Logs, scratchpad thoughts, and intermediate tool outputs exist _only_ within the active frame.
+- **Garbage Collection:** When a sub-task finishes (Frame Pop), all local "noise" is destroyed. Only the explicit **Return Value** is promoted to the Heap.
 
 ### Layer 2: The Tri-Store (The Heap)
 
@@ -37,11 +33,11 @@ This layer implements the **AgentProg** architecture. It treats the Context Wind
 
 The Heap is the "Hard Drive"—infinite, structured, and persistent. It is a **Tri-Store** composed of three specialized memory types:
 
-| Store Type | Structure | Backend | Purpose |
-| --- | --- | --- | --- |
-| **Semantic** | Temporal Graph | Zep / Graphiti | Stores **Facts** & **Relations** (The "What"). Retrieved via **Community Summaries**. |
-| **Episodic** | Hierarchical Logs | SQL / Vector | Stores **Narrative History** (The "When"). Optimized via **AgentFold**. |
-| **Procedural** | Skill Library | Vector DB | Stores **Goal Embeddings** & **Scripts** (The "How"). Solves compounding errors via **Memp**. |
+| Store Type     | Structure         | Backend        | Purpose                                                                                       |
+| -------------- | ----------------- | -------------- | --------------------------------------------------------------------------------------------- |
+| **Semantic**   | Temporal Graph    | Zep / Graphiti | Stores **Facts** & **Relations** (The "What"). Retrieved via **Community Summaries**.         |
+| **Episodic**   | Hierarchical Logs | SQL / Vector   | Stores **Narrative History** (The "When"). Optimized via **AgentFold**.                       |
+| **Procedural** | Skill Library     | Vector DB      | Stores **Goal Embeddings** & **Scripts** (The "How"). Solves compounding errors via **Memp**. |
 
 ### Layer 3: The Nexus (The Assembler)
 
@@ -49,10 +45,10 @@ The Heap is the "Hard Drive"—infinite, structured, and persistent. It is a **T
 
 The Nexus is the CPU. It dynamically assembles the final Prompt Context based on a **Relevance Formula** () and a strict Token Budget.
 
-* **S (Semantic):** Vector similarity.
-* **T (Temporal):** Time decay ().
-* **G (Graph):** Distance in the Knowledge Graph.
-* **I (Salience):** Intrinsic importance score (Safety > Chit-chat).
+- **S (Semantic):** Vector similarity.
+- **T (Temporal):** Time decay ().
+- **G (Graph):** Distance in the Knowledge Graph.
+- **I (Salience):** Intrinsic importance score (Safety > Chit-chat).
 
 ---
 
@@ -68,8 +64,8 @@ A strict schema definition that all agents must respect. This prevents semantic 
 
 Agents connect to the Store via a `GraphScope`.
 
-* **GlobalScope:** Full Read/Write access (Root Agent).
-* **RestrictedScope:** A "Sandbox" view restricted to specific nodes.
+- **GlobalScope:** Full Read/Write access (Root Agent).
+- **RestrictedScope:** A "Sandbox" view restricted to specific nodes.
 
 ```python
 # Parent spawns child with restricted vision
@@ -106,10 +102,10 @@ To prevent the Tri-Store from becoming a swamp, the engine runs a maintenance cy
 
 ### Dependencies
 
-* `getzep` / `graphiti`: For the Temporal Knowledge Graph backend.
-* `chromadb` / `qdrant`: For the Vector Store (Procedural/Episodic).
-* `networkx`: For in-memory graph traversal and pathfinding.
-* `pydantic`: For Ontology enforcement.
+- `getzep` / `graphiti`: For the Temporal Knowledge Graph backend.
+- `chromadb` / `qdrant`: For the Vector Store (Procedural/Episodic).
+- `networkx`: For in-memory graph traversal and pathfinding.
+- `pydantic`: For Ontology enforcement.
 
 ### Data Model (`schema.py`)
 
@@ -126,9 +122,9 @@ class MemoryFrame(BaseModel):
 
 ### Logic Requirements
 
-* **Ingestion:** Incoming observations must pass through a **Salience Classifier** (0.0 - 1.0). Only High Salience (>0.5) facts persist to the Heap.
-* **Retrieval:** The Nexus must implement the **Relevance Formula**. Do not use simple Cosine Similarity.
-* **Garbage Collection:** Ensure that `pop_frame()` creates a "Folded Summary" of the frame before deleting the raw logs.
+- **Ingestion:** Incoming observations must pass through a **Salience Classifier** (0.0 - 1.0). Only High Salience (>0.5) facts persist to the Heap.
+- **Retrieval:** The Nexus must implement the **Relevance Formula**. Do not use simple Cosine Similarity.
+- **Garbage Collection:** Ensure that `pop_frame()` creates a "Folded Summary" of the frame before deleting the raw logs.
 
 ---
 
