@@ -364,4 +364,30 @@ class KnowledgeStore:
             self._transient_events = []
         self._transient_events.append(event)
 
+    async def run_sleep_cycle(self):
+        """
+        Executes background maintenance tasks (Sleep Mode).
+        Consolidates memories, prunes graph, distills skills.
+        """
+        import asyncio
+        import logging
+        logger = logging.getLogger("noetic.knowledge")
+        
+        logger.info("Starting Sleep Cycle...")
+        
+        try:
+            # 1. Chunked/Async consolidation
+            # For now, just simulate work
+            for i in range(5):
+                logger.debug(f"Sleep Cycle: Consolidating chunk {i+1}/5...")
+                await asyncio.sleep(0.5) # Simulate IO
+                
+                # Check cancellation in loop (asyncio.sleep handles it, but logic might need explicit checks)
+            
+            logger.info("Sleep Cycle Complete.")
+            
+        except asyncio.CancelledError:
+            logger.info("Sleep Cycle Interrupted (Waking Up).")
+            raise
+
     

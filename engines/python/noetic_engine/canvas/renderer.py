@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Union
-from .schema import Component, Binding, Text, Button, Column, Row, Container, ForEach
+from .schema import Component, Binding, Text, Button, Column, Row, Container, ForEach, Conditional
 from .bindings import resolve_pointer
 from noetic_engine.knowledge import WorldState
 
@@ -91,5 +91,15 @@ class CanvasRenderer:
                 children.append(self._visit(node.template, child_context))
             
             return c.Div(components=children, class_name="flex flex-col")
+        
+        elif isinstance(node, Conditional):
+            condition = self._resolve(node.condition, context)
+            # Evaluate truthiness
+            if condition:
+                return self._visit(node.true_child, context)
+            elif node.false_child:
+                return self._visit(node.false_child, context)
+            else:
+                return c.Div(components=[]) # Empty div
 
         return c.Text(text=f"Unknown Component: {node.type}")

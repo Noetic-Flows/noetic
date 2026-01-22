@@ -21,7 +21,7 @@ class Planner:
         respecting the Agent's Principles and Skills.
         """
         # 1. Init
-        start_state = self._extract_state(state)
+        start_state = self._extract_state(state, agent.id)
         target_state = goal.target_state
         
         # Priority Queue: (f_score, g_score, state_frozen, path)
@@ -94,18 +94,21 @@ class Planner:
         # Return empty plan if no path found (or maybe a 'Wait' plan?)
         return Plan(steps=[], total_cost=0.0)
 
-    def _extract_state(self, world_state: WorldState) -> Dict[str, Any]:
+    def _extract_state(self, world_state: WorldState, agent_id: str = None) -> Dict[str, Any]:
         # Map facts to a simple KV store
         # Key format: "{subject_id}:{predicate}" or just "predicate" if subject is implied?
         # Ideally, we map Fact(sub, pred, obj) -> "sub:pred": obj
         state = {}
         for fact in world_state.facts:
+            # Full canonical key
             key = f"{fact.subject_id}:{fact.predicate}"
             val = fact.object_literal if fact.object_literal else str(fact.object_entity_id)
             state[key] = val
             
-            # For simpler testing where goal keys might omit UUIDs:
-            # We might want to support "fuzzy" matching, but for now strict.
+            # Simplified key for Agent's own state
+            if agent_id and str(fact.subject_id) == agent_id:
+                state[fact.predicate] = val
+            
         return state
 
     def _satisfies(self, state: Dict[str, Any], conditions: Dict[str, Any]) -> bool:

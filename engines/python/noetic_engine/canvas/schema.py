@@ -39,10 +39,28 @@ class ForEach(Component):
     template: AnyComponent # The template to render for each item
     var: str = "item" # The variable name to expose in the child scope
 
+class Conditional(Component):
+    type: Literal["Conditional"] = "Conditional"
+    condition: Union[bool, Binding]
+    true_child: AnyComponent
+    false_child: Optional[AnyComponent] = None
+
+AnyComponent = Union["Column", "Row", "Text", "Button", "ForEach", "Conditional", "Component"]
+
+class Container(Component):
+    children: List[AnyComponent]
+
+class Column(Container):
+    type: Literal["Column"] = "Column"
+
+class Row(Container):
+    type: Literal["Row"] = "Row"
+
 # Update forward refs
 Column.model_rebuild()
 Row.model_rebuild()
 ForEach.model_rebuild()
+Conditional.model_rebuild()
 
 def parse_component(data: Dict[str, Any]) -> AnyComponent:
     """
@@ -59,5 +77,7 @@ def parse_component(data: Dict[str, Any]) -> AnyComponent:
         return Button(**data)
     if ctype == "ForEach":
         return ForEach(**data)
+    if ctype == "Conditional":
+        return Conditional(**data)
     
     return Component(**data)

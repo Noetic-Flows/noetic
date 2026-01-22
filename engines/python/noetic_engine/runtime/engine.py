@@ -10,6 +10,7 @@ from noetic_engine.conscience import Evaluator
 from .reflex import ReflexSystem
 from .cognitive import CognitiveSystem
 from .scheduler import Scheduler
+from .lifecycle import LifecycleManager
 
 class NoeticEngine:
     def __init__(self, db_url: str = "sqlite:///:memory:"):
@@ -42,6 +43,7 @@ class NoeticEngine:
             self.agent_manager
         )
         self.scheduler = Scheduler(target_fps=60)
+        self.lifecycle = LifecycleManager(self)
 
     async def start(self):
         self.running = True
@@ -85,6 +87,11 @@ class NoeticEngine:
                 # --- 1. REFLEX PHASE (Fast) ---
                 world_state = self.knowledge.get_world_state()
                 events = self.skills.poll_inputs()
+                
+                # Update Lifecycle
+                if events:
+                    await self.lifecycle.notify_interaction()
+                await self.lifecycle.tick()
                 
                 # Update UI
                 self.latest_ui = self.reflex.tick(events, world_state)

@@ -12,6 +12,7 @@ def test_engine_initialization():
     assert engine.reflex is not None
     assert engine.cognitive is not None
     assert engine.scheduler is not None
+    assert engine.lifecycle is not None
 
 def test_core_skills_registered():
     engine = NoeticEngine()

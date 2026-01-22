@@ -38,6 +38,15 @@ The Runtime implements a **Bi-Cameral Execution Model**. We do not use a single 
 3. **Act:** Execute the **Skills** dictated by the Plan.
 4. **Write:** Commit results back to Memory.
 
+### C. The Lifecycle Manager (The Clock)
+
+- **Nature:** State Machine.
+- **Role:** Manages the "Circadian Rhythm" of the engine.
+- **States:**
+    1.  **AWAKE (Active):** High CPU, full attention.
+    2.  **IDLE (Standby):** Low CPU, waiting for input.
+    3.  **REM (Maintenance):** Background processing (Memory Consolidation, Graph Optimization).
+
 ---
 
 ## 3. Core Components
@@ -49,6 +58,14 @@ The main entry point for the application.
 - **Lifecycle Management:** `load()`, `start()`, `pause()`, `stop()`.
 - **Dependency Injection:** It instantiates the singletons (`KnowledgeStore`, `SkillRegistry`, `AgentManager`) and injects them into the loops.
 - **Codex Loading:** Uses `NoeticLoader` to read the JSON bundle and hydrate the subsystems.
+
+### `LifecycleManager` (`lifecycle.py`)
+
+Manages the transition between Awake, Idle, and REM states.
+
+- **Idleness Tracking:** Monitors time since last interaction.
+- **Interrupts:** Handles `SIG_WAKE` to transition from REM to AWAKE upon user activity.
+- **Background Jobs:** Triggers maintenance tasks in `KnowledgeStore` when in REM sleep.
 
 ### `ReflexSystem` (`reflex.py`)
 
