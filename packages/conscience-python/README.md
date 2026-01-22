@@ -1,6 +1,6 @@
-# Noetic Conscience (`noetic.conscience`)
+# Noetic Conscience (Python Library)
 
-## 1. Overview
+**Layer 4c: The Safety Library**
 
 The `noetic.conscience` module is the **Axiological Engine** (Value System) of the Noetic runtime.
 
@@ -15,7 +15,7 @@ If the Conscience determines the cost is too high (exceeding a defined `risk_thr
 
 ---
 
-## 2. Core Philosophy: Dynamic Alignment
+## 1. Core Philosophy: Dynamic Alignment
 
 The Noetic Engine does not believe in "Three Laws of Robotics" hard-coded in English. We believe in **Weighted Mathematical Alignment**.
 
@@ -30,11 +30,11 @@ This allows for nuance.
 
 ---
 
-## 3. Data Model
+## 2. Data Model
 
 The Conscience operates on three primitives defined in the `orchestration` section of the Codex.
 
-### 1. Values (The Abstract)
+### A. Values (The Abstract)
 
 Simple identifiers representing what the Agent cares about.
 
@@ -42,7 +42,7 @@ Simple identifiers representing what the Agent cares about.
 - `val.frugality`
 - `val.safety`
 
-### 2. Principles (The Logic)
+### B. Principles (The Logic)
 
 The executable rules that map context to cost. We use **JsonLogic** to ensure these are safe, portable, and non-Turing-complete.
 
@@ -60,7 +60,7 @@ The executable rules that map context to cost. We use **JsonLogic** to ensure th
 }
 ```
 
-### 3. The Context (The Input)
+### C. The Context (The Input)
 
 When the Planner proposes a step, it sends a `JudgementContext` to the Conscience:
 
@@ -71,12 +71,11 @@ class JudgementContext(BaseModel):
     action_args: Dict       # e.g., { "instance_id": "i-123" }
     tags: List[str]         # e.g., ["tag.destructive", "tag.remote"]
     world_state: Dict       # Snapshot of relevant memory
-
 ```
 
 ---
 
-## 4. Components
+## 3. Core Components
 
 ### `Evaluator` (`evaluator.py`)
 
@@ -93,7 +92,6 @@ This is critical for Enterprise Trust.
 
 - It does not just return the score; it records the **"Why."**
 - It emits an OpenTelemetry event for every Principle that triggered a non-zero cost.
-- _See "Telemetry" in the main README._
 
 ### `VetoSwitch` (`veto.py`)
 
@@ -104,34 +102,47 @@ A safety mechanism.
 
 ---
 
-## 5. Implementation Directives (For AI Assistant)
+## 4. Implementation Details
 
-### Directive 1: JsonLogic Integration
+### JsonLogic Integration
 
-Use the `json-logic-qubit` library (or a robust equivalent).
+We use the `json-logic-qubit` library (or a robust equivalent).
 
-- **Safety:** Wrap the evaluation in a `try/except` block. If a user writes bad logic in their Codex, the Conscience should log a warning and return `0.0` (Fail Open) or `MAX_INT` (Fail Closed), depending on the `manifest.safety_mode` setting. **Default to Fail Closed for safety.**
+- **Safety:** Wrap the evaluation in a `try/except` block. If a user writes bad logic in their Codex, the Conscience logs a warning and returns `0.0` (Fail Open) or `MAX_INT` (Fail Closed), depending on the `manifest.safety_mode` setting. **Default to Fail Closed for safety.**
 
-### Directive 2: Caching
+### Caching
 
 Principle evaluation happens inside the "Hot Loop" of the Planner (A\* search).
 
 - **Performance:** A complex plan might evaluate constraints 1,000 times per second.
-- **Requirement:** Implement `functools.lru_cache` for the JsonLogic evaluation. If the `context` hash hasn't changed, return the previous cost instantly.
+- **Requirement:** `functools.lru_cache` is implemented for the JsonLogic evaluation. If the `context` hash hasn't changed, the previous cost is returned instantly.
 
-### Directive 3: Tag Inheritance
+### Tag Inheritance
 
-The Evaluator must respect the **Ontology**.
+The Evaluator respects the **Ontology**.
 
 - If an action has tag `tag.database.write`, and the Ontology says `tag.database.write` IS-A `tag.destructive`, then Principles targeting `tag.destructive` **must** trigger.
-- You will need to traverse the Tag hierarchy from `noetic.knowledge` during evaluation.
+- The Tag hierarchy from `noetic.knowledge` is traversed during evaluation.
 
----
+## 5. Usage
+
+```python
+from noetic_conscience import Evaluator, JudgementContext
+
+evaluator = Evaluator()
+result = evaluator.judge(
+    context=JudgementContext(action_id="delete_db", ...),
+    principles=[principle_safety_first]
+)
+
+if result.cost > 1000:
+    raise VetoError("Action too dangerous")
+```
 
 ## 6. Directory Structure
 
 ```text
-/noetic/conscience
+noetic_conscience/
 ├── __init__.py         # Exports Evaluator, JudgementContext
 ├── evaluator.py        # The core logic engine
 ├── logic.py            # JsonLogic wrapper and custom operators
@@ -139,5 +150,4 @@ The Evaluator must respect the **Ontology**.
 ├── audit.py            # Telemetry/Explanation generation
 └── tests/
     └── test_logic.py   # Unit tests for rule variations
-
 ```

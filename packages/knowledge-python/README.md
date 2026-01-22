@@ -1,6 +1,6 @@
-# Noetic Knowledge Engine (`noetic.knowledge`)
+# Noetic Knowledge (Python Library)
 
-## Overview
+**Layer 4a: The Cognitive Operating System**
 
 The `noetic.knowledge` module is the **Cognitive Operating System** of the Noetic Engine.
 
@@ -98,7 +98,7 @@ To prevent the Tri-Store from becoming a swamp, the engine runs a maintenance cy
 
 ---
 
-## 4. Implementation Directives (For AI Assistant)
+## 4. Implementation Details
 
 ### Dependencies
 
@@ -126,12 +126,19 @@ class MemoryFrame(BaseModel):
 - **Retrieval:** The Nexus must implement the **Relevance Formula**. Do not use simple Cosine Similarity.
 - **Garbage Collection:** Ensure that `pop_frame()` creates a "Folded Summary" of the frame before deleting the raw logs.
 
----
+## 5. Usage
 
-## 5. Directory Structure
+```python
+from noetic_knowledge import KnowledgeStore
+
+store = KnowledgeStore(db_url="sqlite:///memory.db")
+store.ingest_fact(subject_id=uuid, predicate="likes", object_literal="Pizza")
+```
+
+## 6. Directory Structure
 
 ```text
-noetic/knowledge
+noetic_knowledge/
 ├── __init__.py           # Exports KnowledgeEngine
 ├── ontology.py           # The Shared Schema Definitions
 ├── schema.py             # Pydantic Models (MemoryFrame, Fact, Skill)
@@ -152,5 +159,4 @@ noetic/knowledge
 └── sync/                 # SHARED ENVIRONMENT
     ├── scope.py          # GraphScope & Mounting logic
     └── bus.py            # Pub/Sub Event Bus
-
 ```

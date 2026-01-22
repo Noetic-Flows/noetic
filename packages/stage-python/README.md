@@ -1,6 +1,6 @@
-# Noetic Stage (`noetic.stage`)
+# Noetic Stage (Python Library)
 
-## Overview
+**Layer 4b: The Interface Library**
 
 The `noetic.stage` module is the **Face** of the Noetic Engine. It is responsible for rendering the application's user interface.
 
@@ -10,7 +10,7 @@ Unlike traditional UI frameworks (View-Model) or simple Server-Driven UI (JSON V
 2. **Reflex-Reactive:** The UI runs on the "Reflex Loop" (60Hz). It updates immediately in response to user input (Client-Side Prediction) while asynchronously synchronizing with the "Brain" (Cognitive Loop).
 3. **A2UI Standard:** It utilizes the **Abstract Agent UI (A2UI)** schema, a JSON-based protocol for defining semantic, adaptive interfaces that can be rendered natively on any platform (Web, Mobile, VR).
 
-Crucial: The Agents must use a Skill (MCP) for I/O with the Stage.
+**Crucial:** The Agents must use a Skill (MCP) for I/O with the Stage.
 
 ---
 
@@ -75,14 +75,11 @@ The main class responsible for the translation layer.
 1. **Load Templates:** Parse `stage.json` into Pydantic models.
 2. **Resolve Context:** Create a `RenderContext` containing the current Entities and Facts.
 3. **Tree Traversal:** Walk the A2UI JSON tree recursively.
-
-- **Detection:** Check if a property value is a dictionary containing the key `"bind"`.
-- **Resolution:** If yes, use the `jsonpointer` library to resolve the value from the `RenderContext`.
-
-1. **Target Translation:** Convert the fully hydrated A2UI Node into a **FastUI Component**.
-
-- `A2UI.Column` `FastUI.Div`
-- `A2UI.Button` `FastUI.Button(on_click=...)`
+    - **Detection:** Check if a property value is a dictionary containing the key `"bind"`.
+    - **Resolution:** If yes, use the `jsonpointer` library to resolve the value from the `RenderContext`.
+4. **Target Translation:** Convert the fully hydrated A2UI Node into a **FastUI Component**.
+    - `A2UI.Column` -> `FastUI.Div`
+    - `A2UI.Button` -> `FastUI.Button(on_click=...)`
 
 ### `ReflexManager` (`reflex.py`)
 
@@ -95,7 +92,7 @@ Manages the "Game Loop" aspect of the UI.
 
 ---
 
-## 4. Implementation Directives (For AI Assistant)
+## 4. Implementation Details
 
 ### Data Binding Resolution
 
@@ -107,10 +104,9 @@ Manages the "Game Loop" aspect of the UI.
 
 - Map A2UI `action_id` strings to FastUI `BackEvent`.
 - When a FastUI event fires, the handler must:
-
-1. Look up the action in the Stage JSON (from the Codex).
-2. If it's a local action (e.g., "Toggle Details"), update `local_state`.
-3. If it's an agent action (e.g., "Water Plant"), create a `noetic.senses.Event` and push it to `memory.event_queue`.
+    1. Look up the action in the Stage JSON (from the Codex).
+    2. If it's a local action (e.g., "Toggle Details"), update `local_state`.
+    3. If it's an agent action (e.g., "Water Plant"), create a `noetic.senses.Event` and push it to `memory.event_queue`.
 
 ### Generative Lists (`ForEach`)
 
@@ -132,16 +128,24 @@ The renderer must iterate over the list found at `source` and generate a list of
 
 ### Theme Support
 
-Respect the `theme` field in Stage JSON (in the Codex).
+Respect the `theme` field in Stage JSON (in the Codex). If `theme="noetic.themes.dark"`, inject the appropriate CSS classes or FastUI style props into the components.
 
-- If `theme="noetic.themes.dark"`, inject the appropriate CSS classes or FastUI style props into the components.
+## 5. Usage
 
----
+```python
+from noetic_stage import CanvasRenderer, Component
 
-## 5. Directory Structure
+# Render a component with live data binding
+ui = CanvasRenderer().render(
+    root=Component(...), 
+    context=world_state
+)
+```
+
+## 6. Directory Structure
 
 ```text
-/noetic/stage
+noetic_stage/
 ├── __init__.py         # Exports StageRenderer
 ├── schema.py           # Pydantic Models for A2UI (The Language)
 ├── renderer.py         # Main Logic (A2UI -> FastUI Translator)
@@ -151,7 +155,4 @@ Respect the `theme` field in Stage JSON (in the Codex).
     ├── containers.py
     ├── primitives.py
     └── inputs.py
-
 ```
-
-This architecture ensures that the Noetic Engine can drive complex, data-rich interfaces that feel "Native" and "Alive," validating the Server-Driven UI capabilities of the protocol without relying on fragile string parsing.

@@ -8,70 +8,62 @@ For the past decade, we have built "Apps": rigid, pre-compiled logic silos where
 
 **We are building the alternative.**
 
-We believe software shouldn't be a script the user follows; it should be a **Flow** that adapts to the user's intent. The Noetic Ecosystem allows you to describe _what_ you want to achieve (the Goal), and provides the runtime to let a team of AI Agents decide _how_ to achieve it.
+We believe software shouldn't be a script the user follows; it should be a **Flow** that adapts to the user's intent. The Noetic Ecosystem allows you to describe _what_ you want to achieve, and provides the runtime to let a team of AI Agents decide _how_ to achieve it.
 
 ---
 
-## What is in this Repository?
+## Architecture: The Federated Monorepo
 
-This monorepo contains the two pillars required to make Multi-Agent Systems a reality:
+We have moved beyond a monolithic engine. Noetic is designed as a **Layered SDK Architecture**. This means distinct parts of the "Brain"—like Memory, Safety, or UI—are built as standalone, publishable libraries.
 
-### 1. The Noetic Language (`/noetic-lang`)
+**Why is this beneficial?**
 
-**The Protocol.**
+- **Modularity:** You can use the **Conscience** library to add safety guardrails to a standard chatbot without needing the full Noetic Engine.
+- **Portability:** The core logic is separated from the application, allowing the same Agent to run in a CLI, a Desktop App, or a VSCode Extension.
+- **Polyglot Future:** The architecture supports future language bindings (e.g., Kotlin for mobile) sharing the same core Protocol.
+
+### The Repository Structure
+
+The repo is organized by abstraction layer in the `packages/` directory:
+
+| Layer            | Package             | Description                                                                                    |
+| ---------------- | ------------------- | ---------------------------------------------------------------------------------------------- |
+| **1. Protocol**  | `spec`              | The language-agnostic **JSON Schemas**. The Source of Truth.                                   |
+| **2. Content**   | `stdlib`            | The **Standard Library** of reusable Stanzas (`research.noetic`), Agents, and Knowledge Packs. |
+| **3. Bindings**  | `lang-python`       | The **Data Layer**. Pure Pydantic models that implement the Spec.                              |
+| **4. Libraries** | `knowledge-python`  | **The Memory.** A standalone Graph/Vector store with AgentProg-style stack logic.              |
+|                  | `stage-python`      | **The Interface.** A protocol for Generative UI, Voice, and Presence.                          |
+|                  | `conscience-python` | **The Safety.** An engine for evaluating actions against ethical Principles.                   |
+| **5. Kernel**    | `engine-python`     | **The Brain.** The orchestrator that binds Cognition, Memory, and Runtime together.            |
+
+Applications (consumers of these packages) live in the `apps/` directory, such as the Reference CLI or the VSCode Extension.
+
+---
+
+## The Core Components
+
+### 1. The Noetic Language (`packages/spec`)
+
 Just as HTML defines the structure of the web, the Noetic Language is a standard, open JSON protocol for defining **Noetic Flows**.
+A **Codex** (a `.noetic` file) defines a dynamic **Flow**—a complete application state that orchestrates multiple Agents, their shared Memories, and the Stanzas they operate within.
 
-A **Codex** (a `.noetic` file) does not just define a single "chatbot." It defines a complex, dynamic **Flow**—a complete application state that orchestrates multiple Agents, their shared Memories, and the Stanzas (phases) they operate within. It is the portable blueprint for an entire swarm of intelligence.
-
-### 2. The Noetic Engine (`/noetic-python`)
-
-**The Player.**
-This is the reference implementation of the runtime. It reads a Codex and simulates the Flow in real-time. It handles the heavy lifting through a modular "Brain" architecture:
-
-- **Knowledge:** An active **Cognitive Operating System** that manages memory via a strict **Stack & Heap** architecture ("AgentProg") to prevent hallucination. It supports **Portable Seeds**, allowing Flows to "install" knowledge dependencies on new devices instantly.
-- **Stanzas:** The structural units of a Flow. A Stanza is a "Chapter" of execution that defines a specific Intent (e.g., "Research Phase") and scopes the collaboration of one or more Agents.
-- **Cognition:** The algorithmic core (Planner & Critic) that handles reasoning, confidence calibration, and the "Epistemic Interrupt" loop for ad-hoc learning.
-- **Conscience:** The "Axiological Engine" that enforces safety and alignment via **Principles**.
-- **Skills:** The reusable capabilities (Python functions) and parameterized cognitive tools that allow Agents to affect the world.
-- **Runtime:** The execution kernel managing the **Lifecycle** (Awake/Idle/Sleep) and the **Dual-Loops** (Reflex & Cognitive).
-- **Canvas:** The server-driven Generative UI renderer.
-
-> _Note: While the reference engine is currently built in Python, the Noetic Language is platform-agnostic. Future engines will bring Noetic Flows to mobile and other environments._
-
----
-
-## The Noetic Hierarchy
+### 2. The Noetic Hierarchy
 
 To manage the complexity of multi-agent systems, Noetic introduces a strict structural hierarchy:
 
-### 1. The Flow (The Poem)
+- **The Flow (The Poem):** The high-level application definition. A graph of Stanzas and Agents.
+- **The Stanza (The Verse):** A distinct phase of execution with its own Goal and Scope.
+- _Agentic Stanza:_ "Here is the goal, figure it out."
+- _Procedural Stanza:_ "Follow these exact steps."
 
-The Flow is the "App" itself. It is a dynamic graph that defines the **Routing Logic** of the user's experience. A Flow can span minutes or months, seamlessly saving and resuming state.
+- **The Step (The Line):** An atomic instruction inside a Procedural Stanza.
 
-### 2. The Stanza (The Verse)
+### 3. The "Brain" Modules
 
-A Stanza is a **Logical Unit of Intent**. It is not just "an agent's mode"; it is a shared phase of execution where one or more Agents come together to solve a specific sub-problem.
-
-- _Example:_ A "Negotiation Stanza" might involve a **Sales Agent** (talking to the user) and a **Legal Agent** (monitoring constraints) working in the same shared context.
-- **Agentic Stanzas:** Defined by a Goal; the Agents figure out the "How."
-- **Procedural Stanzas:** Defined by a rigid set of Steps; the Agents follow the SOP.
-
-### 3. The Step (The Line)
-
-An atomic action inside a Procedural Stanza (e.g., "Click Button", "Write File").
-
----
-
-## Why You Need "Principles" (The Conscience)
-
-Most AI agents are "loose cannons"—they will do anything to achieve a goal, often ignoring safety or cost.
-
-**The Noetic Conscience** solves this by implementing **Principles**. Think of Principles as the "Employee Handbook" that your Agents are forced to read and obey.
-
-- **Without Principles:** You tell an agent to "Fix the database." It deletes the production table to clear the error. (Technically fixed!)
-- **With Principles:** You define a Principle: _"Data Preservation: Never delete data without explicit user confirmation."_ The Conscience Module simulates the "Cost" of the delete action, realizes it violates the Principle, and **vetoes** the plan before it executes.
-
-Principles allow you to align Agents with your **Brand, Budget, and Ethics** using simple natural language.
+- **Knowledge (`noetic_knowledge`):** An active **Cognitive Operating System**. It manages memory via a strict **Stack & Heap** architecture (inspired by "AgentProg") to prevent hallucination. It supports **Portable Seeds**, allowing Flows to "install" knowledge dependencies on new devices instantly.
+- **Cognition (`noetic_engine.cognition`):** The algorithmic core. It features an **Actor-Critic** architecture (Planner & Evaluator) and **Metacognition** (Epistemic Interrupts) to detect when the agent needs to stop and learn before acting.
+- **Conscience (`noetic_conscience`):** The "Employee Handbook" for Agents. It evaluates the "Moral Cost" of actions against weighted **Principles** (e.g., "Data Privacy"), vetoing unsafe plans before they execute.
+- **Stage (`noetic_stage`):** The "Front Stage" of the agent. It manages the **Generative UI**, rendering intents into JSON cards, Voice, or Avatars.
 
 ---
 
@@ -84,46 +76,30 @@ A **Noetic Codex** is a self-contained, transportable definition. Because it use
 - **Traditional App:** Crashes if a config file is missing.
 - **Noetic Flow:** Checks its **Knowledge Requirements**. If it lacks the concept of "GDPR Compliance," it uses a **Seed** (a bundled graph dump or a research query) to "learn" that concept before it starts execution.
 
-### Coming Soon: The Noetic Marketplace
-
-Because Noetic Flows are just text files, they can be shared as easily as a document. We are building the **Noetic Marketplace**, a decentralized community hub where users can browse, download, and remix Flows.
-
-- Download a "Startup Launcher" Flow.
-- Tweak its **Stanzas** to include a "Venture Capital Pitch Phase."
-- Adjust its **Principles** to be more "Frugal."
-- Run it instantly.
-
-**No compilation. No app stores. Just pure intent.**
-
 ---
 
 ## Getting Started
 
-You don't need to be a machine learning engineer to build a Noetic Flow. If you can edit a JSON file, you can build an agent.
-
 ### 1. Installation
 
-Clone the repo and install the Python Engine:
+Clone the monorepo and install the CLI application:
 
 ```bash
 git clone https://github.com/noetic-flows/noetic.git
-cd noetic/noetic-python
-pip install -r requirements.txt
+cd noetic
+pip install -e packages/engine-python  # Install the engine logic
+pip install -r apps/python-cli/requirements.txt
 
 ```
 
 ### 2. Run a Flow
 
-We include a sample Codex in the `examples` folder.
+Use the Python CLI app to run a sample Flow from the Standard Library:
 
 ```bash
-python main.py --codex ../noetic-lang/examples/research_team.noetic
+python apps/python-cli/main.py --codex packages/stdlib/stanzas/research.noetic
 
 ```
-
-### 3. Create Your Own
-
-Create a `my-flow.noetic` file. Define your **Stanzas**, **Agents**, **Knowledge Dependencies**, and **Principles**. Run it immediately.
 
 ---
 
@@ -131,9 +107,9 @@ Create a `my-flow.noetic` file. Define your **Stanzas**, **Agents**, **Knowledge
 
 We are building the operating system for the age of AI. We need architects, dreamers, and engineers.
 
-- **For Protocol Designers:** Check out `/noetic-lang` to help evolve the schema.
-- **For Pythonistas:** Dive into `/noetic-python` to optimize the **AgentProg** memory stack or the **Epistemic Acquisition** pipeline.
-- **For Visionaries:** Help us design the first set of Community Flows.
+- **For Protocol Designers:** Check out `packages/spec` to help evolve the JSON schema.
+- **For Pythonistas:** Dive into `packages/engine-python` or individual libraries like `knowledge-python`.
+- **For Visionaries:** Help us build the `stdlib` by designing the first set of Community Flows.
 
 Join us in redefining what software can be.
 

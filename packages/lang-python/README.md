@@ -1,22 +1,27 @@
-# Noetic Language (v3.0)
+# Noetic Lang (Python Bindings)
 
-The **Noetic Language** is the portable schema definition for the Noetic Ecosystem. It defines the "Codex"—the static definition of an Agent's intelligence—independent of the runtime engine (Python, Rust, Swift).
+**Layer 3: The Data Protocol**
 
-## Structure
+This package contains the **Pure Data Models** for the Noetic Ecosystem. It defines the "Shape" of the universe—Agents, Stanzas, Flows, and Actions—using Pydantic.
 
-- **`spec/`**: JSON Schemas (Language Agnostic Source of Truth).
-- **`src/`**: Python SDK (`pydantic` models) for `noetic-python`.
-- **`stdlib/`**: The Standard Library of reusable Stanzas and Agents.
+## 🚫 Constraints
 
-## Usage
+- **No Logic:** This package must never contain business logic, execution code, or side effects.
+- **No Heavy Dependencies:** It should only depend on `pydantic`.
+- **Source of Truth:** These models are used to generate the JSON Schemas in `packages/spec`.
 
-```bash
-pip install noetic-lang
-```
+## 📂 Structure
+
+- `noetic_lang.core`: The primary definitions (`AgentDefinition`, `StanzaDefinition`, `Plan`, `Goal`).
+- `noetic_lang.utils`: Lightweight validators and ID generators.
+
+## 🛠️ Usage
 
 ```python
-from noetic_lang.core import StanzaDefinition, AgentDefinition
+from noetic_lang.core import AgentDefinition
 
-# Validate a stanza file
-stanza = StanzaDefinition.model_validate_json(open("my_stanza.noetic").read())
+agent = AgentDefinition(
+    id="agent.architect",
+    persona={"role": "System Architect"}
+)
 ```
