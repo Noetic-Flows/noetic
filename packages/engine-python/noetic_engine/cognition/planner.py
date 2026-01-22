@@ -2,6 +2,8 @@ import heapq
 from typing import List, Dict, Any, Set, Tuple, Optional
 from noetic_lang.core import Plan, PlanStep, Goal, Action
 from noetic_lang.core import AgentDefinition as AgentContext
+from noetic_lang.core.stanza import StanzaDefinition
+from noetic_knowledge.working.stack import MemoryStack
 from noetic_conscience import Evaluator, JudgementContext, JudgementResult, PolicyViolationError
 from noetic_knowledge import WorldState
 from noetic_engine.skills.registry import SkillRegistry
@@ -11,9 +13,20 @@ class Planner:
     """
     Goal-Oriented Action Planner (GOAP) implementation.
     """
-    def __init__(self, skill_registry: SkillRegistry, evaluator: Optional[Evaluator] = None):
-        self.registry = skill_registry
+    def __init__(self, skill_registry: Optional[SkillRegistry] = None, evaluator: Optional[Evaluator] = None):
+        self.registry = skill_registry or SkillRegistry()
         self.evaluator = evaluator or Evaluator()
+
+    async def create_plan(self, stanza: StanzaDefinition, stack: MemoryStack) -> Plan:
+        steps = []
+        for step_def in stanza.steps:
+            steps.append(PlanStep(
+                skill_id="basic_execution", # Placeholder skill
+                params={"instruction": step_def.instruction},
+                instruction=step_def.instruction,
+                cost=1.0
+            ))
+        return Plan(steps=steps, total_cost=float(len(steps)))
 
     async def generate_plan(self, agent: AgentContext, goal: Goal, state: WorldState) -> Plan:
         """

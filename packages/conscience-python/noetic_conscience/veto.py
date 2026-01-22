@@ -1,4 +1,5 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable, Tuple
+from .logic import Principles
 
 class PolicyViolationError(Exception):
     """
@@ -9,6 +10,27 @@ class PolicyViolationError(Exception):
         self.reason = reason
         self.context = context
         super().__init__(f"Policy Violation by '{principle_id}': {reason}")
+
+class Veto:
+    def __init__(self, principles: Principles):
+        self.principles = principles
+        self.scorer = None
+
+    def set_scorer(self, scorer: Callable[[str, str], float]):
+        self.scorer = scorer
+
+    def check(self, action: Dict[str, Any]) -> Tuple[bool, str]:
+        if not self.scorer:
+            return True, "No scorer set"
+            
+        action_desc = action.get("name", str(action))
+        
+        for principle in self.principles.items:
+            score = self.scorer(action_desc, principle.description)
+            if score >= principle.threshold:
+                return False, f"Violated principle: {principle.description}"
+                
+        return True, "Allowed"
 
 class VetoSwitch:
     """

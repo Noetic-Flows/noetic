@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Union
-from .schema import Component, Binding, Text, Button, Column, Row, Container, ForEach, Conditional
+from .schema import Component, Binding, Text, Button, Column, Row, Container, ForEach, Conditional, Intent, RenderEvent
 from .bindings import resolve_pointer
 from noetic_knowledge import WorldState
 
@@ -10,6 +10,18 @@ except ImportError:
     c = None
     PageEvent = None
     GoToEvent = None
+
+class Renderer:
+    def render(self, intent: Intent) -> RenderEvent:
+        if intent.type == "display_message":
+            return RenderEvent(
+                type="ui_card",
+                payload={
+                    "component": "MessageCard",
+                    "content": intent.content.get("text", "")
+                }
+            )
+        return RenderEvent(type="unknown", payload={})
 
 class CanvasRenderer:
     def __init__(self):

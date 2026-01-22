@@ -44,9 +44,11 @@ You must strictly adhere to this file structure. Do not create files outside the
 
 ## 3. The Methodology: Strict TDD
 
-We follow **Test-Driven Development** religiously. You are not allowed to write logic without a failing test.
+We follow **Test-Driven Development (TDD)** religiously. You are not allowed to write logic without a failing test.
 
-**The Loop:**
+Before starting a session of work, use `codebase_investigator` (in your tools) to analyze the project's architecture and purpose. Understand the desired state of the project before diving into editing code. THEN, proceed with the following TDD loop.
+
+**The TDD Loop:**
 
 1. **Red:** Write a test in `tests/` that defines the expected behavior of a component (e.g., `test_stack_push_frame`). Run it -> It fails.
 2. **Green:** Write the minimal implementation code to make the test pass.

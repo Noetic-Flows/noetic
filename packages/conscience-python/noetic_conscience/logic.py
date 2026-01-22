@@ -1,9 +1,14 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 import json_logic
 from functools import lru_cache
 import logging
+from noetic_lang.core.agent import Principle
 
 logger = logging.getLogger(__name__)
+
+class Principles:
+    def __init__(self, items: List[Principle]):
+        self.items = items
 
 class LogicEngine:
     """
