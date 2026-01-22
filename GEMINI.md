@@ -46,7 +46,7 @@ You must strictly adhere to this file structure. Do not create files outside the
 
 We follow **Test-Driven Development (TDD)** religiously. You are not allowed to write logic without a failing test.
 
-Before starting a session of work, use `codebase_investigator` (in your tools) to analyze the project's architecture and purpose. Understand the desired state of the project before diving into editing code. THEN, proceed with the following TDD loop.
+Before starting a session of work, use `codebase_investigator` (in your tools) to analyze the project's architecture and purpose. Also, be sure to review CONTRIBUTING.md to ensure you follow the guidelines for contributing to this project. With this GEMINI.md, that CONTRIBUTING.md, the various README.md files, and the `codebase_investigator`, you should be able to gain a thorough understanding of the desired future state of the project before diving into editing code. THEN, proceed with the following TDD loop.
 
 **The TDD Loop:**
 
