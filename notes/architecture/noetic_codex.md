@@ -1,0 +1,47 @@
+# Noetic Codex Design
+- Example Codex "burrito-productivity-codex.noetic" (using a zip file under the hood like docx does)
+    - uiComponents/
+        - what goes here: specialized A2UI component definitions + the corresponding code for rendering it (e.g., CSS) … the codebase that loads in the Codex should already have a full set of common UI components, but this Codex can add or override component definitions for specialized functionality
+    - uiViews/
+        - what goes here: full-page A2UI layouts (combinations of references to “uiComponents/”) pre-made for efficient reuse (e.g., “calendar app” view, “notes app” view)
+    - agentDefs/
+        - personaDefs/
+            - orchestrator_main.md
+                - YAML frontmatter
+                    - modelReqs: { …various aspects of models… }
+                    - traits: [ …short strings of traits this persona should exemplify… ]
+                    - personaPrompt: “You are a …”
+                    - contextKeys: [ …short strings to query data resources with, then populate into the context data resource that agents use… ]
+            - …
+        - modelDefs/
+            - ollama_chat:gemini3:4b.md (or should these be JSON?)
+            - vertex_ai:gemini3-pro-preview.md (or should these be JSON?)
+            - …
+        - resourceDefs/
+            - mcp_filesystem.md
+            - …
+        - deliverableDefs/
+            - chat_msg_simple.md
+            - chat_msg_research-supported.md
+            - report_deep_research.md
+            - report_analytics.md
+            - script_python.md
+            - script_bash.md
+            - project_codebase.md
+            - project_notes_folder.md
+            - image_single_small.md
+            - voice_chat_reply.md
+            - …
+        - orchestrator_main.md
+            - Assembles references to the entity definitions in the folders above, with additional data as needed, to define an “Agent” that can have one or more Personas, dynamically using the best available model compatible with its ModelReqs, with one or more Deliverables to define what type of output(s) it is allowed to return and one or more Resources (a.k.a. Tools/Skills, using MCP and/or A2A as appropriate) to define what it has at its disposal to accomplish its task(s). An agent definition can also have its own ContextKeys List in addition to those of its Personas. An agent can be given any task(s) and it will do what it can and tell you what it can’t. The response format should support partial completion, including both results and “error message” type data simultaneously.
+    - stanzaDefs/
+        - coding.noetic
+        - reflection.noetic
+        - research.noetic
+    - flowDefs/
+        - burrito-productivity.noetic
+    - metadata.md (or should this be JSON?)
+        - noetic_version: “0.1”
+        - noetic_flow_id: “noetic_flow:burrito-productivity”
+        - name: “Burrito Productivity”
+        - description: “An all-in-one productivity suite with the power of agentic AI, privacy-focused and local-first.”
