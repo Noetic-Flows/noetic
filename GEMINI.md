@@ -9,13 +9,18 @@
 
 We are building a **Federated Monorepo** containing a **Layered SDK**. Our goal is to create a modular suite of AI tools that allow developers to define, execute, and share Agentic workflows.
 
+All together, this system is an **Agentic Mesh**—a modular suite of AI tools that allow developers to define, execute, and share Agentic workflows across diverse runtimes (ADK, n8n, Local).
+
 ### Core Philosophy
 
 1. **Flows > Apps:** Software is not a static script; it is a dynamic graph of intents (Flows).
 2. **Stanza-Based Execution:** Flows are composed of **Stanzas** (Logical Phases). A Stanza scopes the Agent's goal, tools, and memory.
 3. **AgentProg Memory:** We reject "Context Window Stuffing." We use a strict **Stack (Working Memory)** and **Heap (Long-term Store)** architecture.
 4. **Portable Knowledge:** Agents verify their own knowledge dependencies and use **Seeds** to learn missing concepts instantly.
-5. **Enterprise Readiness:** The system must be secure, observable, and resilient. It supports **Local-First** execution, **Dynamic Failover**, and strict **IAM/ACLs**.
+5. **Agentic Mesh:** A decentralized "System of Systems" where **Agents** (Entities) are governed by **Contracts** (Data) and executed via a **Mesh Runtime** (ADK + n8n).
+6. **Enterprise Readiness:** The system must be secure, observable, and resilient. It supports **Local-First** execution, **Dynamic Failover**, and strict **IAM/ACLs**.
+7. **Configuration as Data:** Anything that can be configurable should be, and **Configuration as Data** allows that configuration to be dynamically updated, versioned, and transported.
+8. **Test-Driven Development:** We follow **Test-Driven Development** religiously.
 
 ---
 
@@ -61,7 +66,8 @@ Execute these phases in order.
 
 1. Define Pydantic models for `FlowDefinition`, `StanzaDefinition`, `AgentDefinition`.
 2. **New:** Define `IdentityContext` and `ACL` models (User Roles, Permissions).
-3. Implement `generate_schemas.py` to output JSON Schemas to `packages/spec`.
+3. **Mesh Protocol:** Define `AgenticIntentContract` (AIC) for cryptographic governance of inter-agent calls.
+4. Implement `generate_schemas.py` to output JSON Schemas to `packages/spec`.
 
 ### Phase 2: Libraries & The Test Harness
 
@@ -93,13 +99,13 @@ Execute these phases in order.
 
 1. **Cognition (The Mind):**
 
+- **TDD:** `test_adk_adapter.py`. Implement **ADK Adapter** to wrap Google ADK as the primary reasoning engine.
 - **TDD:** `test_model_gateway.py`. Implement **Dynamic Inference Routing** (Local Peer Cloud failover).
-- **TDD:** `test_planner.py` & `test_evaluator.py`.
 
 1. **Runtime (The Kernel):**
 
+- **TDD:** `test_mesh_orchestrator.py`. Implement `MeshOrchestrator` to enforce Contracts and route tool calls (n8n vs Local vs ADK).
 - **TDD:** `test_secrets.py`. Implement `SecretsManager` (Vault injection).
-- **TDD:** `test_interpreter.py`. Implement the `StanzaExecutor`.
 - **Integration:** Run the **System Harness** created in Phase 2. It should now turn Green.
 
 ### Phase 4: Reference Application (`apps/python-cli`)

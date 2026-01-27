@@ -5,10 +5,9 @@ from noetic_knowledge import KnowledgeStore
 from noetic_engine.skills import SkillRegistry
 from noetic_engine.skills.library.system.control import WaitSkill, LogSkill
 from noetic_engine.skills.library.memory import MemorizeSkill, RecallSkill
-from noetic_engine.cognition import Planner, AgentManager, FlowManager
-from noetic_conscience import Evaluator
+from noetic_engine.cognition.adk_adapter import ADKAdapter
+from noetic_engine.runtime.mesh import MeshOrchestrator
 from .reflex import ReflexSystem
-from .cognitive import CognitiveSystem
 from .scheduler import Scheduler
 from .lifecycle import LifecycleManager
 
@@ -19,55 +18,48 @@ class NoeticEngine:
         # 1. Initialize Core Subsystems
         self.knowledge = KnowledgeStore(db_url=db_url)
         self.skills = SkillRegistry()
-        self.agent_manager = AgentManager()
-        self.flow_manager = FlowManager(skill_registry=self.skills)
-        self.evaluator = Evaluator()
         
-        # Planner requires skills and principles
-        self.planner = Planner(self.skills, self.evaluator)
+        # 2. Initialize Mesh & Brain (Replaces CognitiveSystem)
+        self.mesh = MeshOrchestrator()
+        
+        # In the future, we load the AgentDefinition from a file/DB
+        # For now, we mock the primary definition
+        self.primary_agent_def = "TODO: Load from AgentDefinition" 
+        self.brain = ADKAdapter(self.mesh, self.primary_agent_def)
         
         self.latest_ui = None
         
-        # 2. Register core skills
+        # 3. Register core skills
         self.skills.register(WaitSkill())
         self.skills.register(LogSkill())
         self.skills.register(MemorizeSkill())
         self.skills.register(RecallSkill())
         
-        # 3. Initialize Loops
+        # 4. Initialize Reflex Loop
         self.reflex = ReflexSystem()
-        self.cognitive = CognitiveSystem(
-            self.knowledge, 
-            self.skills, 
-            self.planner, 
-            self.agent_manager,
-            flow_manager=self.flow_manager
-        )
         self.scheduler = Scheduler(target_fps=60)
         self.lifecycle = LifecycleManager(self)
 
     async def start(self):
         self.running = True
         print("Noetic Engine Starting...")
+        # Start the Brain (ADK)
+        await self.brain.start()
         await self.run_loop()
 
     async def stop(self):
         self.running = False
         print("Noetic Engine Stopping...")
-        # Cancel all pending cognitive tasks
-        for task in self.cognitive.active_tasks:
-            if not task.done():
-                task.cancel()
-        
-        if self.cognitive.active_tasks:
-            await asyncio.gather(*self.cognitive.active_tasks, return_exceptions=True)
-            self.cognitive.active_tasks.clear()
+        await self.brain.stop()
 
     def push_event(self, event_type: str, payload: dict = None):
         """
         Public API to inject events into the Noetic Engine (e.g. from UI).
         """
         self.knowledge.push_event(event_type, payload)
+        # Also notify the brain? 
+        # For now, ADK polls or we can push to it if ADKAdapter supports it.
+        # asyncio.create_task(self.brain.process_user_input(str(payload), None))
 
     def refresh_ui(self):
         """
@@ -78,7 +70,8 @@ class NoeticEngine:
 
     async def run_loop(self):
         """
-        The main Bi-Cameral Execution Loop.
+        The main Bi-Cameral Execution Loop (Reflex only).
+        Cognition happens in background ADKAdapter task.
         """
         print("Noetic Engine Loop Running...")
         while self.running:
@@ -97,20 +90,12 @@ class NoeticEngine:
                 # Update UI
                 self.latest_ui = self.reflex.tick(events, world_state)
 
-                # --- 2. COGNITIVE PHASE (Async Check) ---
-                if world_state.event_queue:
-                    # We wrap the call to process_next to handle task tracking
-                    task = asyncio.create_task(self.cognitive.process_next(world_state))
-                    self.cognitive.active_tasks.add(task)
-                    # Clean up done tasks
-                    task.add_done_callback(self.cognitive.active_tasks.discard)
+                # --- 2. COGNITIVE PHASE (Handled by ADKAdapter background task) ---
+                # We do NOT block here.
 
             except Exception as e:
                 # Reflex Loop Failure is CRITICAL
                 print(f"CRITICAL: Reflex Loop Failure: {e}")
-                # In a production app, we might try to recover or just exit
-                # For now, let's log and keep trying if possible, or stop.
-                # The README says "Log immediately and exit."
                 self.running = False
                 raise e
 

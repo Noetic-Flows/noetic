@@ -35,7 +35,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV=/Users/account1/dev/noetic-core/.venv311
+VIRTUAL_ENV=/Users/account1/dev/noetic/noetic-core/.venv311
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

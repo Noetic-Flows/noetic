@@ -20,7 +20,9 @@ dependencies = [
     "noetic-lang",
     "noetic-knowledge",
     "noetic-stage",
-    "noetic-conscience"
+    "noetic-conscience",
+    "noetic-stdlib",
+    "google-adk"
 ]
 
 [tool.setuptools.packages.find]

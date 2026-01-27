@@ -1,4 +1,4 @@
-#!/Users/account1/dev/noetic-core/.venv311/bin/python3.11
+#!/Users/account1/dev/noetic/noetic-core/.venv311/bin/python3.11
 import sys
 from humanfriendly.cli import main
 if __name__ == '__main__':

@@ -3,15 +3,15 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "noetic-conscience"
+name = "noetic-stdlib"
 version = "0.1.0"
-description = "Axiological Safety Engine for Noetic"
+description = "Standard Library of Agents and Stanzas for Noetic"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0",
-    "json-logic-qubit",
-    "cryptography"
+    "noetic-conscience",
+    "httpx"
 ]
 
 [tool.setuptools.packages.find]
