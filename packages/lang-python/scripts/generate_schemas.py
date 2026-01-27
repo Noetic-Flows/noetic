@@ -1,30 +1,50 @@
 import json
 import os
-import sys
+import shutil
+from typing import Type
+from pydantic import BaseModel
 
-# Ensure we can import the local package
-# Script is in packages/lang-python/scripts/
-# Package is in packages/lang-python/
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from noetic_lang.core import (
+    AgentDefinition,
+    FlowDefinition,
+    StanzaDefinition,
+    IdentityContext,
+    ACL,
+    AgenticIntentContract
+)
 
-from noetic_lang.core import StanzaDefinition, FlowDefinition, AgentDefinition, IdentityContext, ACL
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "../spec")
 
-# Output to packages/spec/schemas/
-# ../../spec/schemas
-SPEC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../spec/schemas"))
-os.makedirs(SPEC_DIR, exist_ok=True)
+def clean_output_dir(directory: str):
+    """Ensure a clean output directory exists."""
+    if os.path.exists(directory):
+        shutil.rmtree(directory)
+    os.makedirs(directory)
 
-def write_schema(model, filename):
+def export_schema(model: Type[BaseModel], filename: str):
+    """Export Pydantic model to JSON schema file."""
     schema = model.model_json_schema()
-    path = os.path.join(SPEC_DIR, filename)
-    with open(path, "w") as f:
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    
+    with open(filepath, "w") as f:
         json.dump(schema, f, indent=2)
-    print(f"Generated {path}")
+    print(f"Generated: {filepath}")
+
+def main():
+    print(f"Generating schemas to {OUTPUT_DIR}...")
+    clean_output_dir(OUTPUT_DIR)
+    
+    # Core Protocol Models
+    export_schema(FlowDefinition, "flow_definition.json")
+    export_schema(StanzaDefinition, "stanza_definition.json")
+    export_schema(AgentDefinition, "agent_definition.json")
+    
+    # Security Models
+    export_schema(IdentityContext, "identity_context.json")
+    export_schema(ACL, "acl.json")
+    export_schema(AgenticIntentContract, "agentic_intent_contract.json")
+    
+    print("Schema generation complete.")
 
 if __name__ == "__main__":
-    print(f"Generating schemas in {SPEC_DIR}...")
-    write_schema(StanzaDefinition, "stanza.schema.json")
-    write_schema(FlowDefinition, "flow.schema.json")
-    write_schema(AgentDefinition, "agent.schema.json")
-    write_schema(IdentityContext, "identity.schema.json")
-    write_schema(ACL, "acl.schema.json")
+    main()

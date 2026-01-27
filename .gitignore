@@ -208,3 +208,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+.venv/
+.noetic_env/
+.local_venv_copies/
