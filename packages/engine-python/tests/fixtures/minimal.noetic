@@ -1,0 +1,59 @@
+{
+    "api_version": "noetic/v1",
+    "knowledge": {
+        "initial_state": [
+            [
+                "project.alpha",
+                "title",
+                "Project Alpha"
+            ],
+            [
+                "project.alpha",
+                "status",
+                "active"
+            ]
+        ]
+    },
+    "canvas": {
+        "root": {
+            "type": "Column",
+            "children": [
+                {
+                    "type": "Text",
+                    "content": {
+                        "bind": "project.alpha/title",
+                        "fallback": "Loading..."
+                    }
+                },
+                {
+                    "type": "Text",
+                    "content": "Static Footer"
+                }
+            ]
+        }
+    },
+    "agents": [
+        {
+            "id": "test_agent_1",
+            "system_prompt": "You are a test agent.",
+            "allowed_skills": [],
+            "principles": []
+        }
+    ],
+    "orchestration": {
+        "flows": [
+            {
+                "id": "main_flow",
+                "start_at": "idle",
+                "states": {
+                    "idle": {
+                        "instructions": [
+                            "Wait"
+                        ],
+                        "next": null
+                    }
+                }
+            }
+        ]
+    }
+}

@@ -121,9 +121,24 @@ class NoeticLoader:
                 
                 agent_data["principles"] = resolved_principles
 
-                agent = AgentContext(**agent_data)
-                engine.agent_manager.register(agent)
-                logger.info(f"Loaded Agent: {agent.id}")
+                # Adapter: Convert Lang Model -> Stdlib Model
+                from noetic_stdlib.agents.base import AgentDefinition as RuntimeAgentDef
+                from noetic_stdlib.agents.local import LocalAgent
+
+                agent_def = AgentContext(**agent_data) # RESTORED: Create Context first
+
+                runtime_def = RuntimeAgentDef(
+                    id=agent_def.id,
+                    name=agent_def.id, # Map ID to Name if Name missing
+                    description="Loaded from Codex",
+                    allowed_tools=agent_def.allowed_skills, # Map skills to tools
+                    system_prompt=agent_def.system_prompt
+                )
+                
+                # Instantiate Concrete Agent (LocalAgent for generic runner)
+                agent_instance = LocalAgent(definition=runtime_def)
+                engine.mesh.register_agent(agent_instance)
+                logger.info(f"Loaded Agent: {agent_def.id}")
             except CodexIntegrityError as e:
                 logger.error(f"Integrity Error: {e}")
                 raise e

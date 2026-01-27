@@ -10,6 +10,7 @@ from noetic_engine.runtime.mesh import MeshOrchestrator
 from .reflex import ReflexSystem
 from .scheduler import Scheduler
 from .lifecycle import LifecycleManager
+from .flow_manager import FlowManager
 
 class NoeticEngine:
     def __init__(self, db_url: str = "sqlite:///:memory:"):
@@ -39,6 +40,7 @@ class NoeticEngine:
         self.reflex = ReflexSystem()
         self.scheduler = Scheduler(target_fps=60)
         self.lifecycle = LifecycleManager(self)
+        self.flow_manager = FlowManager()
 
     async def start(self):
         self.running = True

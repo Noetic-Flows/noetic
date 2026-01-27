@@ -49,6 +49,27 @@ class CanvasRenderer:
             # Create a shallow copy of context with enriched entities
             context = context.copy()
             context["entities"] = enriched_entities
+            
+            # ALSO expose named entities at the ROOT of context for cleaner bindings
+            # e.g. "project.alpha" -> entities["project.alpha"]
+            for name, entity in enriched_entities.items():
+                if name not in context: # Don't overwrite existing root keys like 'ui'
+                    # Flatten attributes for even easier access? 
+                    # For now just expose the entity dict. 
+                    # If I access "project.alpha.title", and entity has attributes.title, 
+                    # I might need to flatten attributes too?
+                    # Let's try exposing the attributes dict directly as the root object if we want generic access
+                    # OR just expose the entity and let pointer parse it.
+                    # Entity structure: { attributes: { ... } }
+                    # So project.alpha.attributes.title is needed.
+                    # Unless we flatten.
+                    
+                    # Flatten attributes into the object for Root access
+                    flattened = entity.copy()
+                    if "attributes" in flattened:
+                         flattened.update(flattened["attributes"])
+                    
+                    context[name] = flattened
 
         return self._visit(root, context)
 
