@@ -1,6 +1,6 @@
 # User Persona: [User Name]
 
-_This file defines the 'Grounding' for all agentic actions. The Productivity Specialist refers to this file to adapt its behavior, tone, and decision-making._
+_This file defines the 'Grounding' for all agentic actions. The Productivity Specialist refers to this file to adapt its behavior, tone, and decision-making. Core directives are found in `.agent/rules/core_directives.md`_
 
 ## 1. User's Identity & Style Preferences
 
