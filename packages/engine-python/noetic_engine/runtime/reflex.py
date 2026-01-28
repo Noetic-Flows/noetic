@@ -4,6 +4,8 @@ from noetic_stage.reflex import ReflexManager
 from noetic_stage.schema import Component
 from noetic_knowledge import WorldState
 
+from noetic_stage.visage import Visage
+
 class ReflexSystem:
     """
     Manages the 'Reflex Loop' (System 1) - UI rendering and Input handling.
@@ -13,17 +15,25 @@ class ReflexSystem:
         self.renderer = CanvasRenderer()
         self.manager = ReflexManager()
         self.root_component: Optional[Component] = None
+        self.visage: Optional[Visage] = None
 
     def set_root(self, root: Component):
         self.root_component = root
+        
+    def set_visage(self, visage: Visage):
+        self.visage = visage
 
     def render_now(self, world_state: WorldState) -> Any:
         """
         Forces an immediate re-render of the UI with current state.
         """
         merged_context = self.manager.merge_state(world_state)
-        if self.root_component:
-            return self.renderer.render(self.root_component, merged_context)
+        
+        # Priority: Visage -> Root Component
+        root = self._get_current_root(merged_context)
+        
+        if root:
+            return self.renderer.render(root, merged_context)
         return {}
 
     def tick(self, events: List[Any], world_state: WorldState) -> Any:
@@ -38,7 +48,14 @@ class ReflexSystem:
         merged_context = self.manager.merge_state(world_state)
         
         # 3. Render
-        if self.root_component:
-            return self.renderer.render(self.root_component, merged_context)
+        root = self._get_current_root(merged_context)
+        
+        if root:
+            return self.renderer.render(root, merged_context)
             
         return {}
+        
+    def _get_current_root(self, context) -> Optional[Component]:
+        if self.visage:
+            return self.visage.render(context)
+        return self.root_component
