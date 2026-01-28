@@ -1,40 +1,70 @@
 from typing import List, Optional, Any
-from pydantic import BaseModel, Field
-from datetime import datetime
+from uuid import UUID
+from ..schema import MemoryFrame
 
-class LogEntry(BaseModel):
-    content: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    metadata: dict = Field(default_factory=dict)
+class StackError(Exception):
+    """Raised when an invalid stack operation is attempted."""
+    pass
 
-class MemoryFrame(BaseModel):
-    goal: str
-    logs: List[LogEntry] = Field(default_factory=list)
-    context: dict = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-class MemoryStack(BaseModel):
-    frames: List[MemoryFrame] = Field(default_factory=list)
-
+class MemoryStack:
+    """
+    Implements the 'Working Memory' of the Agent as a Frame Stack.
+    Enforces strict scoping of context to prevent 'Token Bloat'.
+    """
+    
+    def __init__(self):
+        self._frames: List[MemoryFrame] = []
+        
     @property
-    def current_frame(self) -> Optional[MemoryFrame]:
-        if not self.frames:
+    def depth(self) -> int:
+        return len(self._frames)
+    
+    def get_active_frame(self) -> Optional[MemoryFrame]:
+        """Returns the currently active (top) frame."""
+        if not self._frames:
             return None
-        return self.frames[-1]
+        return self._frames[-1]
 
-    def push_frame(self, goal: str, context: dict = None) -> MemoryFrame:
-        frame = MemoryFrame(goal=goal, context=context or {})
-        self.frames.append(frame)
-        return frame
+    def push_frame(self, goal: str) -> UUID:
+        """
+        Creates a new stack frame for a sub-task.
+        """
+        parent_id = self.get_active_frame().id if self._frames else None
+        
+        new_frame = MemoryFrame(
+            goal=goal,
+            parent_id=parent_id
+        )
+        
+        self._frames.append(new_frame)
+        return new_frame.id
+        
+    def pop_frame(self, return_value: Any = None) -> Any:
+        """
+        Destroys the current frame (GC) and returns the result to the parent.
+        """
+        if not self._frames:
+            raise StackError("Cannot pop from an empty stack.")
+            
+        # The frame is destroyed here (implicitly by removing reference)
+        # Any local_vars in this frame are lost to the ether (Garbage Collected)
+        popped_frame = self._frames.pop()
+        
+        # In a real implementation, we might process 'popped_frame' for Procedural Memory here
+        # e.g., if success, distill into a Skill.
+        
+        return return_value
 
-    def pop_frame(self, result: Any = None) -> Any:
-        if not self.frames:
-            return None # Or raise Error
-        self.frames.pop()
-        # In a real implementation, we might log the result to the parent frame
-        return result
-
-    def add_log(self, content: str, metadata: dict = None):
-        if self.current_frame:
-            log = LogEntry(content=content, metadata=metadata or {})
-            self.current_frame.logs.append(log)
+    def add_log(self, content: str):
+        """Adds a thought/log to the active frame's scratchpad."""
+        active = self.get_active_frame()
+        if not active:
+            raise StackError("No active frame to log to.")
+        active.scratchpad.append(content)
+        
+    def set_var(self, key: str, value: Any):
+        """Sets a local variable in the active frame."""
+        active = self.get_active_frame()
+        if not active:
+            raise StackError("No active frame to set variable in.")
+        active.local_vars[key] = value

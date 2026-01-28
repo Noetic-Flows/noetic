@@ -11,9 +11,17 @@ This module has two primary responsibilities:
 1. **State Management (AgentProg):** preventing "Token Bloat" by scoping context to the active task (Stack) vs. long-term storage (Heap).
 2. **Swarm Synchronization (SSE):** ensuring multiple agents perceive a shared reality via a federated Knowledge Graph.
 
+## 1. Roadmap (Phase 2: Cognitive Nexus)
+
+- [ ] **Step 1: Scaffolding** (Defining the Ontology & Interfaces)
+- [ ] **Step 2: Working Memory** (The Stack & Garbage Collection)
+- [ ] **Step 3: The Nexus** (Context Assembly & Budgeting)
+- [ ] **Step 4: The Tri-Store** (Zep & Vector DB Integration)
+- [ ] **Step 5: Federation** (Shared Semantic Environment)
+
 ---
 
-## 1. Architecture: The Tri-Layer Brain
+## 2. Architecture: The Tri-Layer Brain
 
 The module is divided into three functional layers, mimicking the hierarchy of biological cognition.
 

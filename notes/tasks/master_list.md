@@ -21,14 +21,23 @@ To build **Noetic**, a "Software 3.0" operating system where users define intent
         - [ ] ASP Client Implementation
         - [ ] Reflex/FastUI Rendering Component
 
-## Phase 2: Cognition & Memory
-- [ ] **Knowledge Graph Integration**
-    - [ ] Implement `knowledge-python`
-    - [ ] AgentProg Memory Stack (Working Memory)
-    - [ ] Long-Term Store (Vector/Graph)
-- [ ] **Cognitive Control**
-    - [ ] Planner/Evaluator Loop
-    - [ ] Metacognition Interrupts
+## Phase 2: Cognition & Memory (Cognitive Nexus)
+- [ ] **Layer 1: Working Memory (The Stack)**
+    - [ ] `packages/knowledge-python`: Implement `MemoryFrame`
+    - [ ] `packages/knowledge-python`: Implement Garbage Collection (Frame Pop)
+- [ ] Implement Layer 2: Tri-Store (Heap) <!-- id: 16 -->
+    - [ ] Unify Schema (`noetic_knowledge/schema.py`) <!-- id: 17 -->
+    - [ ] Update DB Models (`store/models.py`) <!-- id: 18 -->
+    - [ ] Refactor `store/store.py` to use unified Schema <!-- id: 19 -->
+    - [ ] Implement Procedural Memory (Skills) <!-- id: 20 -->
+    - [ ] Verify Tri-Store Operations <!-- id: 21 -->
+- [ ] **Layer 3: The Nexus (The Assembler)**
+    - [ ] Implement Relevance Formula ($R = S \cdot T \cdot G \cdot I$)
+    - [ ] Implement Token Budgeting
+- [ ] **Shared Semantic Environment (SSE)**
+    - [ ] Define Ontology (`ontology.py`)
+    - [ ] Implement Graph Scopes (`GraphScope`)
+    - [ ] Implement Pub/Sub Bus
 
 ## Phase 3: Safety & Interface
 - [ ] **Conscience Module**

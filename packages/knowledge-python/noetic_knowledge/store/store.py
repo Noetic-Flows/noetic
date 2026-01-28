@@ -1,27 +1,22 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from uuid import UUID, uuid4
 from datetime import datetime
-from sqlalchemy import create_engine, select, and_, or_
+from sqlalchemy import create_engine, select, and_, or_, delete
 from sqlalchemy.orm import sessionmaker, Session
 import chromadb
 from chromadb.config import Settings
 import networkx as nx
 from typing import Protocol
 
-class KnowledgeSource(Protocol):
-    async def fetch(self, query: str) -> List[Dict[str, Any]]:
-        ...
-
 # Import Models (DB Layer)
-from .models import Base, EntityModel, FactModel, TagModel
+from .models import Base, EntityModel, FactModel, SkillModel
 
-# Import Schema (API Layer)
-from .schema import WorldState, Entity, Fact
+# Import Unified Schema (API Layer)
+from ..schema import Entity, Fact, Skill, EntityType, RelationType, MemoryFrame
 
 class KnowledgeStore:
     def __init__(self, db_url: str = "sqlite:///noetic.db", vector_db_path: Optional[str] = None, collection_name: str = "knowledge_facts"):
         self.db_url = db_url
-        # Use StaticPool for in-memory if requested, but file-based is safer for concurrency
         if db_url == "sqlite:///:memory:":
             from sqlalchemy.pool import StaticPool
             self.engine = create_engine(db_url, echo=False, connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -29,296 +24,193 @@ class KnowledgeStore:
             self.engine = create_engine(db_url, echo=False, connect_args={"check_same_thread": False})
         
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-        
-        # Initialize DB (Auto-migration for now)
         Base.metadata.create_all(bind=self.engine)
         
-        # Initialize ChromaDB
+        # Initialize ChromaDB (Vector Store)
+        # We need two collections: one for Declarative Facts (Semantic), one for Procedural Skills (Procedural)
         if vector_db_path:
             self.chroma_client = chromadb.PersistentClient(path=vector_db_path)
         else:
             self.chroma_client = chromadb.EphemeralClient()
             
-        self.collection = self.chroma_client.get_or_create_collection(name=collection_name)
+        self.fact_collection = self.chroma_client.get_or_create_collection(name="facts")
+        self.skill_collection = self.chroma_client.get_or_create_collection(name="skills")
 
-        # Initialize Graph Cache
+        # Initialize Graph Cache (Semantic Store)
         self.graph = nx.MultiDiGraph()
         self._load_graph_cache()
         
-        self.summarizer = None # Callable[[List[str]], Awaitable[str]]
-        self.sources: Dict[str, KnowledgeSource] = {}
-
-    def add_source(self, name: str, source: KnowledgeSource):
-        self.sources[name] = source
-
-    async def source_knowledge(self, query: str):
-        """
-        Queries external sources and ingests results.
-        """
-        for name, source in self.sources.items():
-            try:
-                results = await source.fetch(query)
-                for res in results:
-                    # Expect res to be dict with content, maybe ID
-                    # We need to map this to Facts.
-                    # Simple Assumption: Subject=Query (as concept), Predicate="found_in", Object=Content
-                    # Or better: The source returns structured triples?
-                    # For now, treat as unstructured text ingestion.
-                    
-                    # Create a concept for the query
-                    concept_id = uuid4() # or hash(query)
-                    
-                    self.ingest_fact(
-                        subject_id=concept_id,
-                        predicate="related_content",
-                        object_literal=res.get("content", str(res)),
-                        subject_type="Concept",
-                        source_type=f"external:{name}"
-                    )
-                    self.ingest_fact(concept_id, "name", object_literal=query)
-            except Exception as e:
-                import logging
-                logging.getLogger("noetic.knowledge").warning(f"Source {name} failed: {e}")
-
     def _get_session(self) -> Session:
         return self.SessionLocal()
-
-    async def _fold_episodes(self):
-        """
-        Consolidates granular facts (logs) into summary facts.
-        """
-        if not self.summarizer:
-            return
-
-        session = self._get_session()
-        try:
-            # 1. Find active log facts
-            # We fold 'episodic_log' -> 'episodic_summary'
-            # and 'audit.trace' -> 'audit.summary'
-            
-            fold_targets = {
-                "episodic_log": "episodic_summary",
-                "audit.trace": "audit.summary"
-            }
-            
-            stmt = select(FactModel).where(
-                FactModel.predicate.in_(fold_targets.keys()),
-                FactModel.valid_until.is_(None)
-            )
-            logs = session.execute(stmt).scalars().all()
-            
-            # 2. Group by subject AND predicate
-            from collections import defaultdict
-            grouped = defaultdict(list)
-            for log in logs:
-                key = (log.subject_id, log.predicate)
-                grouped[key].append(log)
-            
-            # 3. Process groups
-            timestamp = datetime.utcnow()
-            for (subject_id, predicate), subject_logs in grouped.items():
-                target_predicate = fold_targets[predicate]
-                
-                if len(subject_logs) >= 3: # Consolidation Threshold (low for testing)
-                    # Generate Summary
-                    text_logs = [l.object_literal for l in subject_logs]
-                    summary = await self.summarizer(text_logs)
-                    
-                    # Archive old logs
-                    for log in subject_logs:
-                        log.valid_until = timestamp
-                        session.add(log)
-                    
-                    # Create Summary Fact
-                    new_fact = FactModel(
-                        subject_id=subject_id,
-                        predicate=target_predicate,
-                        object_literal=summary,
-                        valid_from=timestamp
-                    )
-                    session.add(new_fact)
-            
-            session.commit()
-            
-            # Refresh Graph Cache (lazy way)
-            self._load_graph_cache()
-            
-        except Exception as e:
-            session.rollback()
-            import logging
-            logging.getLogger("noetic.knowledge").error(f"Folding failed: {e}")
-            raise e
-        finally:
-            session.close()
-
-    from contextlib import contextmanager
-    @contextmanager
-    def transaction(self):
-        """
-        Atomic transaction context manager for SQL and Vector stores.
-        """
-        session = self._get_session()
-        try:
-            # We don't have a native 'transaction' for ChromaDB easily in this version,
-            # but we can ensure SQL commits before we claim success.
-            # If SQL fails, we don't proceed to subsequent logic if caller uses session.
-            yield session
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            raise e
-        finally:
-            session.close()
+        
+    # ==========================================
+    # Layer 2a: Semantic Store (Facts & Graph)
+    # ==========================================
     
-    def _load_graph_cache(self):
-        """Loads all currently active facts into the NetworkX graph."""
-        state = self.get_world_state()
-        self.graph.clear()
-        for fact in state.facts:
+    def ingest_fact(self, fact: Fact) -> Fact:
+        """
+        Ingests a unified Fact object into SQL (Persistence), Graph (Relations), and Chroma (Search).
+        """
+        session = self._get_session()
+        try:
+            # 1. Ensure Subject Entity Exists
+            self._ensure_entity(session, fact.subject_id, fact.subject_type)
+            if fact.object_id:
+                self._ensure_entity(session, fact.object_id, EntityType.CONCEPT) # Default to concept if unknown
+
+            # 2. Add to SQL
+            model = FactModel(
+                id=fact.id,
+                subject_id=UUID(fact.subject_id),
+                predicate=fact.predicate.value,
+                object_entity_id=UUID(fact.object_id) if fact.object_id else None,
+                object_literal=fact.object_literal,
+                confidence=fact.confidence,
+                salience=fact.salience,
+                source_type=fact.source_type,
+                valid_from=fact.valid_from,
+                valid_until=fact.valid_until
+            )
+            session.add(model)
+            session.commit()
+            
+            # 3. Add to Graph
             self._add_fact_to_graph(fact)
+            
+            # 4. Add to Vector Store
+            doc_text = f"{fact.subject_id} {fact.predicate.value} {fact.object_literal or fact.object_id}"
+            self.fact_collection.add(
+                ids=[str(fact.id)],
+                documents=[doc_text],
+                metadatas=[{"subject": fact.subject_id, "predicate": fact.predicate.value, "type": "fact"}]
+            )
+            
+            return fact
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    def _ensure_entity(self, session: Session, entity_id: str, type: EntityType):
+        uid = UUID(entity_id)
+        existing = session.execute(select(EntityModel).where(EntityModel.id == uid)).scalar_one_or_none()
+        if not existing:
+            ent = EntityModel(id=uid, type=type.value)
+            session.add(ent)
 
     def _add_fact_to_graph(self, fact: Fact):
-        """Helper to add a single fact to the NetworkX graph."""
-        # Nodes are stored as strings for consistency with external IDs/Tags
-        
-        u = str(fact.subject_id)
-        
-        if fact.object_entity_id:
-            v = str(fact.object_entity_id)
-            self.graph.add_edge(
-                u, v, 
-                key=str(fact.id),
-                predicate=fact.predicate, 
-                weight=1.0 
-            )
-        else:
-            v = f"literal:{fact.object_literal}"
-            self.graph.add_edge(
-                u, v,
-                key=str(fact.id),
-                predicate=fact.predicate,
-                weight=1.0
-            )
+        u = fact.subject_id
+        v = fact.object_id if fact.object_id else f"literal:{fact.object_literal}"
+        self.graph.add_edge(u, v, key=str(fact.id), predicate=fact.predicate.value)
 
-    def ingest_fact(self, subject_id: UUID, predicate: str, object_entity_id: Optional[UUID] = None, object_literal: Optional[str] = None, subject_type: str = "unknown", confidence: float = 1.0, source_type: str = "inference", allow_multiple: bool = False) -> Fact:
+    def _load_graph_cache(self):
+        self.graph.clear()
+        session = self._get_session()
+        try:
+            active_facts = session.execute(select(FactModel).where(FactModel.valid_until.is_(None))).scalars().all()
+            for f in active_facts:
+                self._add_fact_to_graph(self._map_model_to_fact(f))
+        finally:
+            session.close()
+
+    def _map_model_to_fact(self, model: FactModel) -> Fact:
+        return Fact(
+            id=model.id,
+            subject_id=str(model.subject_id),
+            subject_type=EntityType.CONCEPT, # Simplified for reconstruction
+            predicate=RelationType(model.predicate) if model.predicate in [r.value for r in RelationType] else RelationType.RELATED_TO,
+            object_id=str(model.object_entity_id) if model.object_entity_id else None,
+            object_literal=model.object_literal,
+            confidence=model.confidence,
+            salience=model.salience,
+            valid_from=model.valid_from,
+            valid_until=model.valid_until
+        )
+
+    # ==========================================
+    # Layer 2b: Procedural Store (Skills)
+    # ==========================================
+
+    def ingest_skill(self, skill: Skill):
         """
-        Ingests a fact into the knowledge graph.
-        Handles temporal validity and contradictions.
+        Persists a reusable skill into SQL and Vector Store.
         """
         session = self._get_session()
         try:
-            now = datetime.utcnow()
-            
-            # 1. Check if the Subject Entity exists
-            subject = session.execute(select(EntityModel).where(EntityModel.id == subject_id)).scalar_one_or_none()
-            if not subject:
-                subject = EntityModel(id=subject_id, type=subject_type)
-                session.add(subject)
-            elif subject_type != "unknown":
-                subject.type = subject_type
-                session.add(subject)
-            
-            # 2. Check for Existing Active Fact (Same Subject, Predicate, Object)
-            stmt = select(FactModel).where(
-                FactModel.subject_id == subject_id,
-                FactModel.predicate == predicate,
-                FactModel.valid_until.is_(None)
+            model = SkillModel(
+                id=skill.id,
+                name=skill.name,
+                trigger_condition=skill.trigger_condition,
+                steps=skill.steps,
+                success_rate=skill.success_rate,
+                usage_count=skill.usage_count,
+                created_at=skill.created_at
             )
-            
-            if object_entity_id:
-                stmt = stmt.where(FactModel.object_entity_id == object_entity_id)
-            else:
-                stmt = stmt.where(FactModel.object_literal == object_literal)
-                
-            existing_exact_fact = session.execute(stmt).scalar_one_or_none()
-            
-            if existing_exact_fact:
-                # Update metadata if needed (e.g. confidence refinement)
-                # For now, just return existing
-                return self._map_fact_model_to_schema(existing_exact_fact)
-
-            # 3. Check for Contradictions (Only if not allowing multiple)
-            if not allow_multiple:
-                contradiction_stmt = select(FactModel).where(
-                    FactModel.subject_id == subject_id,
-                    FactModel.predicate == predicate,
-                    FactModel.valid_until.is_(None)
-                )
-                
-                existing_contradictions = session.execute(contradiction_stmt).scalars().all()
-                
-                for old_fact in existing_contradictions:
-                    old_fact.valid_until = now
-                    session.add(old_fact)
-                    # Remove from Graph Cache
-                    try:
-                        u = str(old_fact.subject_id)
-                        v = str(old_fact.object_entity_id) if old_fact.object_entity_id else f"literal:{old_fact.object_literal}"
-                        key = str(old_fact.id)
-                        if self.graph.has_edge(u, v, key=key):
-                            self.graph.remove_edge(u, v, key=key)
-                    except Exception:
-                        pass # safe ignore if graph out of sync
-                
-            # 4. Insert New Fact
-            new_fact = FactModel(
-                subject_id=subject_id,
-                predicate=predicate,
-                object_entity_id=object_entity_id,
-                object_literal=object_literal,
-                valid_from=now,
-                valid_until=None,
-                confidence=confidence,
-                source_type=source_type
-            )
-            session.add(new_fact)
-            
-            # Update Entity Attributes for A2UI Data Binding
-            # We treat facts as property updates on the subject entity
-            val = object_literal if object_literal else str(object_entity_id)
-            
-            # Ensure subject attributes is a dict and update
-            attrs = dict(subject.attributes) if subject.attributes else {}
-            attrs[predicate] = val
-            subject.attributes = attrs
-            session.add(subject)
-            
+            session.add(model)
             session.commit()
-            session.refresh(new_fact)
             
-            fact_schema = self._map_fact_model_to_schema(new_fact)
-
-            # 5. Ingest into ChromaDB
-            # Text representation: "Subject predicate Object"
-            obj_str = str(object_entity_id) if object_entity_id else str(object_literal)
-            doc_text = f"Fact: {predicate} {obj_str}" # Focus on predicate and object for search
-            
-            metadata = {
-                "subject_id": str(subject_id),
-                "predicate": predicate,
-                "object": obj_str,
-                "type": "fact",
-                "valid_from": now.isoformat(),
-                "confidence": confidence,
-                "source_type": source_type
-            }
-            
-            self.collection.add(
-                documents=[doc_text],
-                metadatas=[metadata],
-                ids=[str(new_fact.id)]
+            # Vectorize Trigger Condition
+            self.skill_collection.add(
+                ids=[str(skill.id)],
+                documents=[skill.trigger_condition],
+                metadatas=[{"name": skill.name, "type": "skill"}]
             )
-            
-            # 6. Update Graph Cache
-            self._add_fact_to_graph(fact_schema)
-            
-            return fact_schema
-            
         except Exception as e:
             session.rollback()
             raise e
         finally:
             session.close()
+
+    def retrieve_relevant_skills(self, query: str, limit: int = 3) -> List[Skill]:
+        """
+        Finds skills semantically related to the query (Intent).
+        """
+        results = self.skill_collection.query(
+            query_texts=[query],
+            n_results=limit
+        )
+        
+        skills = []
+        if results['ids'] and results['ids'][0]:
+            session = self._get_session()
+            try:
+                ids = [UUID(i) for i in results['ids'][0]]
+                models = session.execute(select(SkillModel).where(SkillModel.id.in_(ids))).scalars().all()
+                for m in models:
+                    skills.append(Skill(
+                        id=m.id,
+                        name=m.name,
+                        trigger_condition=m.trigger_condition,
+                        steps=m.steps,
+                        success_rate=m.success_rate,
+                        usage_count=m.usage_count,
+                        created_at=m.created_at
+                    ))
+            finally:
+                session.close()
+        
+        return skills
+
+    # ==========================================
+    # Layer 2c: Episodic Store (Events/Logs)
+    # ==========================================
+
+    def ingest_episode_summary(self, summary: str, frames: List[MemoryFrame]):
+        """
+        Invoked by AgentFold to store a consolidated narrative of an execution trace.
+        """
+        # For MVP, we treat an Episode Summary as a high-salience Fact on the Agent
+        # Subject: Agent (Self) -> Predicate: EXPERIENCED -> Object: Summary
+        fact = Fact(
+            subject_id=str(uuid4()), # Placeholder for Self ID
+            subject_type=EntityType.AGENT,
+            predicate=RelationType.EVENT, # We might need a new RelationType like 'EXPERIENCED'
+            object_literal=summary,
+            salience=1.0,
+            confidence=1.0
+        )
+        self.ingest_fact(fact)
 
     def hybrid_search(self, query: str, limit: int = 5) -> List[Fact]:
         """
@@ -327,7 +219,7 @@ class KnowledgeStore:
         2. Filters results for validity in SQL (or just by checking valid_until via ID lookup).
         """
         # 1. Search Chroma
-        results = self.collection.query(
+        results = self.fact_collection.query(
             query_texts=[query],
             n_results=limit * 2 # Fetch more to account for invalid ones
         )
@@ -350,157 +242,7 @@ class KnowledgeStore:
             )
             
             valid_models = session.execute(stmt).scalars().all()
-            return [self._map_fact_model_to_schema(m) for m in valid_models]
+            return [self._map_model_to_fact(m) for m in valid_models]
             
         finally:
             session.close()
-
-    def get_all_parent_tags(self, tags: List[str]) -> List[str]:
-        """
-        Recursively finds all parent tags for the given list of tags.
-        Uses the 'is_a' predicate in the knowledge graph.
-        """
-        all_tags = set(tags)
-        to_process = list(tags)
-        visited = set()
-
-        # Since we use NetworkX for active facts, we can use it for fast traversal
-        # We need to make sure 'is_a' facts are in the graph.
-        # Node IDs in graph are UUIDs or literals.
-        # If tags are names, we might need a mapping name -> UUID.
-        
-        # For simplicity in this reference implementation, let's assume 
-        # tags in ctx.tags can be names or UUID strings.
-        
-        while to_process:
-            current = to_process.pop(0)
-            if current in visited:
-                continue
-            visited.add(current)
-            
-            # Find parents in NetworkX graph
-            # We look for edges (current, parent, predicate='is_a')
-            if current in self.graph:
-                for _, neighbor, data in self.graph.edges(current, data=True):
-                    if data.get("predicate") == "is_a":
-                        parent = str(neighbor)
-                        if parent not in all_tags:
-                            all_tags.add(parent)
-                            to_process.append(parent)
-                            
-        return list(all_tags)
-
-    def get_world_state(self, snapshot_time: Optional[datetime] = None) -> WorldState:
-        """
-        Retrieves the state of the world at a specific point in time.
-        """
-        if snapshot_time is None:
-            snapshot_time = datetime.utcnow()
-            
-        session = self._get_session()
-        try:
-            # Clear ORM cache to ensure we get the latest from other threads/processes
-            session.expire_all()
-            
-            # Fetch Active Entities
-            # Usually we want all entities.
-            # TODO: Add valid_from/until to Entities if we want to track their existence lifespan.
-            # For now, just get all entities.
-            entities_models = session.execute(select(EntityModel)).scalars().all()
-            entities_map = {e.id: self._map_entity_model_to_schema(e) for e in entities_models}
-            
-            # Fetch Active Facts
-            # valid_from <= snapshot_time AND (valid_until IS NULL OR valid_until > snapshot_time)
-            facts_stmt = select(FactModel).where(
-                FactModel.valid_from <= snapshot_time,
-                or_(
-                    FactModel.valid_until.is_(None),
-                    FactModel.valid_until > snapshot_time
-                )
-            )
-            facts_models = session.execute(facts_stmt).scalars().all()
-            facts_list = [self._map_fact_model_to_schema(f) for f in facts_models]
-            
-            # Fetch transient events
-            events = []
-            if hasattr(self, "_transient_events"):
-                events = list(self._transient_events)
-                self._transient_events.clear()
-
-            return WorldState(
-                tick=int(snapshot_time.timestamp() * 60), # Approx tick count
-                entities=entities_map,
-                facts=facts_list,
-                event_queue=events
-            )
-            
-        finally:
-            session.close()
-
-    def _map_fact_model_to_schema(self, model: FactModel) -> Fact:
-        return Fact(
-            id=model.id,
-            subject_id=model.subject_id,
-            predicate=model.predicate,
-            object_entity_id=model.object_entity_id,
-            object_literal=model.object_literal,
-            confidence=model.confidence,
-            source_type=model.source_type,
-            valid_from=model.valid_from,
-            valid_until=model.valid_until
-        )
-
-    def _map_entity_model_to_schema(self, model: EntityModel) -> Entity:
-        return Entity(
-            id=model.id,
-            type=model.type,
-            attributes=model.attributes,
-            created_at=model.created_at,
-            updated_at=model.updated_at
-        )
-
-    
-
-    def push_event(self, event_type: str, payload: Dict[str, Any] = None):
-        """
-        Pushes a new event into the world state queue.
-        """
-        from .schema import Event
-        event = Event(
-            id=uuid4(),
-            type=event_type,
-            payload=payload or {},
-            timestamp=datetime.utcnow()
-        )
-        # Note: In a persistent DB, we would store this in an 'events' table.
-        # For now, we'll keep a transient session-based queue if needed, 
-        # but get_world_state currently hydrates from DB.
-        # Let's add a simple transient queue to the store for this session.
-        if not hasattr(self, "_transient_events"):
-            self._transient_events = []
-        self._transient_events.append(event)
-
-    async def run_sleep_cycle(self):
-        """
-        Executes background maintenance tasks (Sleep Mode).
-        Consolidates memories, prunes graph, distills skills.
-        """
-        import asyncio
-        import logging
-        logger = logging.getLogger("noetic.knowledge")
-        
-        logger.info("Starting Sleep Cycle...")
-        
-        try:
-            # 1. Episode Folding (Consolidation)
-            logger.info("Sleep Cycle: Folding episodes...")
-            await self._fold_episodes()
-            
-            # 2. Yield to event loop to simulate chunked work / allow interrupts
-            await asyncio.sleep(0.1)
-            
-            logger.info("Sleep Cycle Complete.")
-            
-        except asyncio.CancelledError:
-            logger.info("Sleep Cycle Interrupted (Waking Up).")
-            raise

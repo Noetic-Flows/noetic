@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional, Any
 from datetime import datetime
 import uuid
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON, Text
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON, Text, Integer
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
@@ -30,6 +30,9 @@ class FactModel(Base):
     object_entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("entities.id"), nullable=True)
     object_literal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    # salience: Mapped[float] = mapped_column(Float, default=0.0) # Duplicate? I see I added it before.
+    # Note: View file showed salience on line 33. I should preserve it.
+    salience: Mapped[float] = mapped_column(Float, default=0.0)
     source_type: Mapped[str] = mapped_column(String, default="inference")
     
     # Temporal Columns
@@ -40,8 +43,13 @@ class FactModel(Base):
     subject = relationship("EntityModel", foreign_keys=[subject_id], back_populates="facts_as_subject")
     object_entity = relationship("EntityModel", foreign_keys=[object_entity_id], back_populates="facts_as_object")
 
-class TagModel(Base):
-    __tablename__ = "tags"
+class SkillModel(Base):
+    __tablename__ = "skills"
     
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    trigger_condition: Mapped[str] = mapped_column(Text, nullable=False)
+    steps: Mapped[list] = mapped_column(JSON, default=list) 
+    success_rate: Mapped[float] = mapped_column(Float, default=0.5)
+    usage_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
