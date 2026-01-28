@@ -11,7 +11,9 @@ In "Software 2.0" (Standard Code), safety is enforced by hard-coded `if/else` st
 - **The Orchestrator** asks: _"How do I achieve Goal X?"_ (It finds the path of least resistance).
 - **The Conscience** asks: _"What is the moral/value cost of that path?"_ (It adds friction to undesirable actions).
 
-If the Conscience determines the cost is too high (exceeding a defined `risk_threshold`), the Action is **vetoed** before it is ever sent to the Runtime.
+If the Conscience determines the cost is too high (exceeding a defined `risk_threshold`), the Action is **intercepted**.
+*   It may be **Vetoed** (Hard Stop).
+*   It may trigger a **Shadow Action Card** (Human-in-the-Loop Approval).
 
 ---
 

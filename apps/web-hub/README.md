@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Noetic Web Hub
 
-## Getting Started
+**Role:** Universal Access Portal
+**Topology:** Reference Client (Hub)
+**Stack:** Next.js + FastUI + ASP
 
-First, run the development server:
+The **Web Hub** is the browser-based entry point into your Noetic Network. It adheres to the **"Software 3.0"** paradigm: it contains almost no business logic. Instead, it is a high-performance **Remote Renderer** for the Agents running on your Workhorse (Engine).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🌟 Capabilities
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1.  **Universal Access:** Log in from any browser (Desktop, Tablet, Phone) to access your Study.
+2.  **Optimistic UI:** Interactions feel instant (Local-First), ensuring 60fps responsiveness even when the Agent is "Thinking."
+3.  **Agent Server Protocol (ASP):** Connects to your Noetic Engine via Secure WebSockets (mTLS).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🏗 Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The Hub is a "Thin Client" that implements the **Noetic Stage** protocol.
 
-## Learn More
+*   **ASP Client:** Manages the secure tunnel to your Engine.
+*   **Canvas Renderer:** Dynamically renders the `A2UI` (Abstract Agent UI) JSON tree sent by the Agent.
+*   **Local State:** Handles transient interactions (typing, scrolling) locally before syncing "Committed Intents" to the Engine.
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1.  **Configure ASP Connection:**
+    *   Set `NOETIC_ENGINE_URL` (e.g., `wss://home-desktop.tailscale.net:8080`)
+    *   Set `NOETIC_CLIENT_CERT` (Your User Identity)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2.  **Run Development Server:**
+    ```bash
+    npm run dev
+    ```
 
-## Deploy on Vercel
+## 🔒 Security
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*   **Zero-Trust:** Uses **mTLS** authentication. The Hub cannot connect to the Engine without a valid User Certificate.
+*   **Sovereignty:** All data remains on your Engine (Workhorse). The Web Hub caches strictly what is needed for the current session.

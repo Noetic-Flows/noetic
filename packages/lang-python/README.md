@@ -4,6 +4,8 @@
 
 This package contains the **Pure Data Models** for the Noetic Ecosystem. It defines the "Shape" of the universe—Agents, Stanzas, Flows, and Actions—using Pydantic.
 
+It provides the schema validation for the **Noetic Codex** (the user's portable brain dump).
+
 ## 🚫 Constraints
 
 - **No Logic:** This package must never contain business logic, execution code, or side effects.

@@ -2,7 +2,9 @@
 
 **Layer 5: The Runtime Kernel**
 
-This is the reference implementation of the Noetic Runtime. It acts as the **Orchestrator**, binding the lower-level libraries (`knowledge`, `stage`, `conscience`) into a cohesive Agent Loop.
+This is the reference implementation of the Noetic Runtime. It acts as the **"Workhorse"** of the Noetic Network—the heavy-lifting daemon that runs your Agents, manages the Tri-Store, and serves the **Agent Server Protocol (ASP)**.
+
+It is designed to run locally on your primary machine (Desktop/Laptop) as a Sovereign Sidecar.
 
 ## ⚙️ Architecture
 

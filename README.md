@@ -1,8 +1,12 @@
 # The Noetic Ecosystem
 
+
 ## Redefining Software: From "Apps" to "Flows"
 
 Welcome to the **Noetic Monorepo**. This repository houses the foundation for a new generation of intelligent software—**Software 3.0**.
+
+> **[Read the Maximally Ambitious Vision](notes/vision.md)**  
+> **[Read the Technical Architecture (v2)](notes/architecture/noetic_v2.md)**
 
 For the past decade, we have built "Apps": rigid, pre-compiled logic silos where a developer has to predict every possible user interaction.
 
