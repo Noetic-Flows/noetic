@@ -69,3 +69,25 @@ class ADKAdapter:
             )
         else:
             print("ADK Brain decided to reply text only (not implemented yet).")
+
+    async def _process_proposal(self, proposal: Dict[str, Any]):
+        """
+        The "Critic" Phase: Evaluates a proposed action and executes it if safe.
+        """
+        action_type = proposal.get("action")
+        
+        if action_type == "tool_call":
+            tool_name = proposal.get("tool_name")
+            params = proposal.get("params", {})
+            
+            # TODO: Conscience Check (Veto) goes here.
+            # is_safe = self.conscience.evaluate(...)
+            
+            # Execute via Mesh
+            # We construct a synthetic contract since this is internal thought
+            await self.orchestrator.route_intent(
+                agent_id="self", # Self-invocation
+                tool=tool_name,
+                params=params,
+                contract=None # Internal trusted loop for now
+            )
