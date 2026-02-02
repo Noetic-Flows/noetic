@@ -128,12 +128,27 @@ def create_app(engine: NoeticEngine, codex_path: str):
                     
                     elif msg_type == "INTENT":
                         payload = message.get("payload", {})
+                        intent_name = payload.get("name", "unknown")
+                        logger.info(f"Received INTENT: {intent_name} with payload: {payload}")
+                        
+                        # Direct injection into Reflex State for immediate feedback
+                        # In the real system, this goes to the "Brain", but for "Ping", we shortcut to Reflex.
+                        engine.reflex.manager.update("last_intent", intent_name)
+                        import time
+                        engine.reflex.manager.update("last_intent_time", time.time())
+                        
+                        # Also push to event bus as before
                         engine.push_event("user.intent", payload)
+                        
                         await websocket.send_json({
                             "type": "CONFIRMATION",
                             "status": "RECEIVED",
                             "ref_id": message.get("ref_id")
                         })
+                        
+                        # Force refresh
+                        engine.refresh_ui()
+                        
                     else:
                         logger.warning(f"Unknown ASP message type: {msg_type}")
             except RuntimeError as e:

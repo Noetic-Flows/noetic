@@ -18,6 +18,8 @@ class SystemDashboardVisage(Visage):
                 Text(content="--------------------------------"),
                 Text(content=f"Engine Status: ONLINE"),
                 Text(content=f"Connected Clients: {subscribers}"),
-                Text(content=f"System Time: {time.time()}")
+                Text(content=f"System Time: {time.time()}"),
+                Text(content=f"Last Intent: {context.get('last_intent', 'None')}"),
+                Text(content=f"Last Heartbeat: {context.get('last_intent_time', 'N/A')}")
             ]
         )
