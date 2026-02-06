@@ -14,7 +14,7 @@ This document defines the data models for the noetic-policies package. All model
 
 ### Policy
 
-**Description**: A complete policy specification including metadata, constraints, state graph, invariants, and goal state. Represents the declarative "what" that governs agent or contract behavior.
+**Description**: A complete policy specification including metadata, constraints, state graph, invariants, goal states with scoring/ranking, and temporal bounds. Represents the declarative "what" that governs agent or contract behavior.
 
 **Attributes**:
 - `version` (str, required): Policy format version (e.g., "1.0"). Used for compatibility checking and migration.
@@ -22,17 +22,21 @@ This document defines the data models for the noetic-policies package. All model
 - `name` (str, optional): Human-readable policy name
 - `description` (str, optional): Policy purpose and context
 - `metadata` (dict[str, Any], optional): Additional metadata (author, created_at, tags, etc.)
-- `state_schema` (dict[str, str], required): Defines state variables and their types (e.g., {"balance": "number", "status": "enum[pending,complete]"})
+- `state_schema` (dict[str, str], required): Defines state variables and their types (e.g., {"balance": "number", "status": "enum[pending,complete]", "elapsed_seconds": "number"})
 - `constraints` (list[Constraint], required): List of constraint definitions
 - `state_graph` (StateGraph, required): State machine definition
 - `invariants` (list[Invariant], optional): Global invariants that must hold throughout execution
-- `goal_states` (list[GoalState], optional): Target states with optional goal conditions representing successful completion
+- `goal_states` (list[GoalState], optional): Target states with goal conditions, scoring (priority/reward), progress conditions, and per-goal temporal bounds
+- `temporal_bounds` (TemporalBounds, optional): Global time/step limits for the entire policy execution. Goal-level temporal bounds must not exceed these.
 
 **Validation Rules**:
 - Version must match supported format (current or current-1)
 - At least one constraint must be defined
 - State graph must be complete and valid
 - Goal states (if specified) must exist in state graph
+- Goal-level temporal bounds must not exceed policy-level temporal bounds (FR-008h)
+- Transition costs must be non-negative
+- Goal rewards must be positive
 
 **Pydantic Model**:
 ```python
@@ -50,6 +54,7 @@ class Policy(BaseModel):
     state_graph: StateGraph
     invariants: list[Invariant] = Field(default_factory=list)
     goal_states: list[GoalState] = Field(default_factory=list)
+    temporal_bounds: TemporalBounds | None = None
 
     @field_validator('goal_states')
     @classmethod
@@ -61,6 +66,30 @@ class Policy(BaseModel):
             if invalid_goals:
                 raise ValueError(f"Goal states not in state graph: {invalid_goals}")
         return v
+
+    @model_validator(mode='after')
+    def validate_temporal_bounds_hierarchy(self) -> 'Policy':
+        """Goal-level temporal bounds must not exceed policy-level temporal bounds (FR-008h)."""
+        if self.temporal_bounds is None:
+            return self
+        for goal in self.goal_states:
+            if goal.temporal_bounds is None:
+                continue
+            if (self.temporal_bounds.max_steps is not None
+                    and goal.temporal_bounds.max_steps is not None
+                    and goal.temporal_bounds.max_steps > self.temporal_bounds.max_steps):
+                raise ValueError(
+                    f"Goal '{goal.name}' max_steps ({goal.temporal_bounds.max_steps}) "
+                    f"exceeds policy max_steps ({self.temporal_bounds.max_steps})"
+                )
+            if (self.temporal_bounds.timeout_seconds is not None
+                    and goal.temporal_bounds.timeout_seconds is not None
+                    and goal.temporal_bounds.timeout_seconds > self.temporal_bounds.timeout_seconds):
+                raise ValueError(
+                    f"Goal '{goal.name}' timeout_seconds ({goal.temporal_bounds.timeout_seconds}) "
+                    f"exceeds policy timeout_seconds ({self.temporal_bounds.timeout_seconds})"
+                )
+        return self
 
     @field_validator('state_schema')
     @classmethod
@@ -178,18 +207,23 @@ class State(BaseModel):
 
 ### Transition
 
-**Description**: An edge in the state graph connecting two states. Has preconditions (when allowed) and effects (what changes).
+**Description**: An edge in the state graph connecting two states. Has preconditions (when allowed), effects (what changes), and an optional cost weight for pathfinding optimization.
 
 **Attributes**:
 - `to` (str, required): Target state name
 - `preconditions` (list[str], optional): Constraint names that must be satisfied for this transition
 - `effects` (list[str], optional): State changes applied when transition occurs
+- `cost` (float, optional): Static cost weight for this transition (default 1.0, must be ≥ 0.0). Used by kernel planner for cost-optimal pathfinding.
+- `cost_expr` (str, optional): Dynamic cost as a CEL expression evaluating to a non-negative number. References state schema variables. When present, overrides static `cost` at runtime. Validated at parse time for syntax and variable references.
 - `description` (str, optional): Human-readable transition description
 
 **Validation Rules**:
 - Target state must exist in state graph
 - Precondition names must reference valid constraints
 - Effects must be valid CEL assignment expressions
+- Cost must be non-negative (≥ 0.0) if specified
+- Cost expression must be valid CEL syntax evaluating to numeric type
+- Cost expression must reference only variables defined in state schema
 
 **Pydantic Model**:
 ```python
@@ -197,7 +231,17 @@ class Transition(BaseModel):
     to: str
     preconditions: list[str] = Field(default_factory=list)
     effects: list[str] = Field(default_factory=list)
+    cost: float = Field(default=1.0, ge=0.0)
+    cost_expr: str | None = None
     description: str | None = None
+
+    @field_validator('cost_expr')
+    @classmethod
+    def validate_cost_expr_syntax(cls, v):
+        # CEL syntax validation performed during validation phase
+        if v is not None and not v.strip():
+            raise ValueError("Empty cost expression not allowed")
+        return v
 ```
 
 ---
@@ -225,13 +269,92 @@ class Invariant(BaseModel):
 
 ---
 
+### ProgressCondition
+
+**Description**: A CEL expression that evaluates to a numeric value (0.0–1.0) indicating proximity to goal satisfaction. Unlike boolean goal conditions, progress conditions provide gradient signals that enable heuristic search — the planner can distinguish "almost there" from "far away."
+
+**Attributes**:
+- `expr` (str, required): CEL expression evaluating to a float in [0.0, 1.0]. References state schema variables. 0.0 = no progress, 1.0 = fully satisfied.
+- `weight` (float, optional): Relative importance of this progress signal when multiple progress conditions exist (default 1.0, must be > 0.0). Weights are normalized across all progress conditions for a goal.
+- `description` (str, optional): Human-readable explanation of what this progress signal measures
+
+**Validation Rules**:
+- Expression must be valid CEL syntax evaluating to numeric type
+- Expression must reference only variables defined in state schema
+- Weight must be positive (> 0.0)
+
+**Pydantic Model**:
+```python
+class ProgressCondition(BaseModel):
+    expr: str = Field(..., min_length=1)
+    weight: float = Field(default=1.0, gt=0.0)
+    description: str | None = None
+
+    @field_validator('expr')
+    @classmethod
+    def validate_expr_syntax(cls, v):
+        # CEL syntax validation performed during validation phase
+        if not v.strip():
+            raise ValueError("Empty progress condition expression not allowed")
+        return v
+```
+
+---
+
+### TemporalBounds
+
+**Description**: Time and step constraints that limit how long or how many transitions an agent may take. Applicable at the policy level (global limits) or the goal level (per-goal limits). Enables the kernel to reason about urgency, abandon infeasible goals, and allocate effort across time-bounded objectives.
+
+**Attributes**:
+- `max_steps` (int, optional): Maximum number of state transitions allowed. Must be > 0 if specified. At the policy level, this is the global transition budget. At the goal level, this is the maximum transitions to reach that specific goal.
+- `deadline` (str, optional): CEL expression evaluating to boolean — `true` means the deadline has passed. References state schema variables (typically a timestamp or counter). Example: `"elapsed_seconds > 300"` or `"current_time > deadline_time"`.
+- `timeout_seconds` (float, optional): Wall-clock timeout in seconds. Must be > 0 if specified. The kernel will halt pursuit of this goal (or the entire policy) if wall-clock time exceeds this value. Distinct from `deadline` which operates on policy state variables.
+- `description` (str, optional): Human-readable explanation of these bounds
+
+**Validation Rules**:
+- max_steps must be positive integer (> 0) if specified
+- deadline must be valid CEL syntax evaluating to boolean type
+- deadline must reference only variables defined in state schema
+- timeout_seconds must be positive (> 0.0) if specified
+- At least one bound must be specified (max_steps, deadline, or timeout_seconds)
+- Goal-level bounds cannot exceed policy-level bounds (FR-008h)
+
+**Pydantic Model**:
+```python
+class TemporalBounds(BaseModel):
+    max_steps: int | None = Field(default=None, gt=0)
+    deadline: str | None = None
+    timeout_seconds: float | None = Field(default=None, gt=0.0)
+    description: str | None = None
+
+    @model_validator(mode='after')
+    def validate_at_least_one_bound(self) -> 'TemporalBounds':
+        if self.max_steps is None and self.deadline is None and self.timeout_seconds is None:
+            raise ValueError("At least one temporal bound must be specified (max_steps, deadline, or timeout_seconds)")
+        return self
+
+    @field_validator('deadline')
+    @classmethod
+    def validate_deadline_syntax(cls, v):
+        # CEL syntax validation performed during validation phase
+        if v is not None and not v.strip():
+            raise ValueError("Empty deadline expression not allowed")
+        return v
+```
+
+---
+
 ### GoalState
 
-**Description**: A target abstract state with optional goal conditions that specify desired concrete values. Enables goal-directed agent execution with precise success criteria.
+**Description**: A target abstract state with optional goal conditions, scoring metadata (priority, reward, progress conditions), and temporal bounds. Enables goal-directed agent execution with ranked preferences, gradient-based search heuristics, and time awareness.
 
 **Attributes**:
 - `name` (str, required): Goal state name (must exist in state graph)
-- `conditions` (list[str], optional): CEL expressions defining target values (e.g., "balance >= 1000", "quality_score >= 0.8")
+- `conditions` (list[str], optional): CEL expressions defining target values — boolean success criteria (e.g., "balance >= 1000", "quality_score >= 0.8")
+- `priority` (int, optional): Ordinal ranking for goal preference (default 0). Higher values = more preferred. When multiple goals are achievable, the agent pursues the highest-priority goal first. Goals with equal priority are disambiguated by reward.
+- `reward` (float, optional): Cardinal utility value for achieving this goal (default 1.0, must be > 0.0). Used by the kernel planner for utility maximization. Higher values make a goal more attractive relative to its cost-to-reach.
+- `progress_conditions` (list[ProgressCondition], optional): Gradient signals for heuristic search. Each evaluates to a float (0.0–1.0) indicating proximity to goal satisfaction. Enables the planner to navigate toward goals even when boolean conditions are not yet met.
+- `temporal_bounds` (TemporalBounds, optional): Per-goal time/step limits. If specified, the agent will abandon pursuit of this goal when bounds are exceeded. Must not exceed policy-level temporal bounds.
 - `description` (str, optional): Human-readable explanation of what this goal represents
 
 **Validation Rules**:
@@ -239,12 +362,22 @@ class Invariant(BaseModel):
 - Conditions must be valid CEL expressions
 - Conditions must reference only variables defined in state schema
 - Conditions should be satisfiable (not contradict constraints/invariants)
+- Priority must be an integer
+- Reward must be positive (> 0.0)
+- Progress condition expressions must be valid CEL evaluating to numeric type
+- Progress condition expressions must reference only state schema variables
+- Temporal bounds must be valid if specified (FR-008g)
+- Goal temporal bounds must not exceed policy-level temporal bounds (FR-008h)
 
 **Pydantic Model**:
 ```python
 class GoalState(BaseModel):
     name: str = Field(..., min_length=1, pattern=r'^[a-zA-Z_][a-zA-Z0-9_]*$')
     conditions: list[str] = Field(default_factory=list)
+    priority: int = Field(default=0)
+    reward: float = Field(default=1.0, gt=0.0)
+    progress_conditions: list[ProgressCondition] = Field(default_factory=list)
+    temporal_bounds: TemporalBounds | None = None
     description: str | None = None
 
     @field_validator('conditions')
@@ -337,13 +470,16 @@ class ValidationError:
 
 ### GraphAnalysisResult
 
-**Description**: Results from state graph static analysis.
+**Description**: Results from state graph static analysis, including cost-aware pathfinding and temporal feasibility.
 
 **Attributes**:
 - `unreachable_states` (set[str], required): States not reachable from initial state
 - `deadlock_sccs` (list[set[str]], required): Strongly connected components representing deadlocks
 - `goal_reachable` (bool, required): Whether any goal state is reachable from initial
 - `cycles` (list[list[str]], optional): All cycles in the graph (thorough mode only)
+- `goal_costs` (dict[str, float], optional): Minimum cost to reach each reachable goal state from initial (thorough mode only). Uses Dijkstra's algorithm with transition costs.
+- `goal_min_steps` (dict[str, int], optional): Minimum number of transitions to reach each reachable goal from initial (thorough mode only). Used for temporal feasibility checking.
+- `temporally_infeasible_goals` (list[str], optional): Goal states where minimum path length exceeds the goal's or policy's max_steps (thorough mode only).
 
 **Pydantic Model**:
 ```python
@@ -353,6 +489,9 @@ class GraphAnalysisResult:
     deadlock_sccs: list[set[str]]
     goal_reachable: bool
     cycles: list[list[str]] | None = None
+    goal_costs: dict[str, float] | None = None
+    goal_min_steps: dict[str, int] | None = None
+    temporally_infeasible_goals: list[str] | None = None
 ```
 
 ---
@@ -408,12 +547,27 @@ Policy
   │         └─ transitions: list[Transition]
   │              ├─ to: str (references State.name)
   │              ├─ preconditions: list[str] (references Constraint.name)
-  │              └─ effects: list[str] (modify state_schema variables)
+  │              ├─ effects: list[str] (modify state_schema variables)
+  │              ├─ cost: float (pathfinding weight, default 1.0)
+  │              └─ cost_expr: str | None (dynamic cost, CEL over state_schema)
   ├─ invariants: list[Invariant]
   │    └─ expr: str (references state_schema variables)
-  └─ goal_states: list[GoalState]
-       ├─ name: str (references State.name)
-       └─ conditions: list[str] (CEL expressions over state_schema variables)
+  ├─ goal_states: list[GoalState]
+  │    ├─ name: str (references State.name)
+  │    ├─ conditions: list[str] (boolean CEL over state_schema)
+  │    ├─ priority: int (ordinal ranking, higher = preferred)
+  │    ├─ reward: float (cardinal utility, default 1.0)
+  │    ├─ progress_conditions: list[ProgressCondition]
+  │    │    ├─ expr: str (numeric CEL 0.0–1.0 over state_schema)
+  │    │    └─ weight: float (relative importance, default 1.0)
+  │    └─ temporal_bounds: TemporalBounds | None
+  │         ├─ max_steps: int | None
+  │         ├─ deadline: str | None (boolean CEL over state_schema)
+  │         └─ timeout_seconds: float | None
+  └─ temporal_bounds: TemporalBounds | None (global limits)
+       ├─ max_steps: int | None
+       ├─ deadline: str | None (boolean CEL over state_schema)
+       └─ timeout_seconds: float | None
 
 ValidationResult
   ├─ errors: list[ValidationError]
@@ -422,7 +576,10 @@ ValidationResult
 
 GraphAnalysisResult
   ├─ unreachable_states: set[str] (references State.name)
-  └─ deadlock_sccs: list[set[str]] (references State.name)
+  ├─ deadlock_sccs: list[set[str]] (references State.name)
+  ├─ goal_costs: dict[str, float] (min cost to each goal)
+  ├─ goal_min_steps: dict[str, int] (min transitions to each goal)
+  └─ temporally_infeasible_goals: list[str]
 ```
 
 ---

@@ -7,7 +7,7 @@
 
 ## Summary
 
-Build the noetic-policies package as the foundation of the Noetic ecosystem. This package provides policy specification format, parsing, validation, and a standard library of production-ready policies. The package enables developers to write declarative policies that govern autonomous AI agents and smart contracts, with comprehensive static analysis to catch errors before runtime. Dual validation modes (fast <1s, thorough complete analysis) with OpenTelemetry observability and format versioning support.
+Build the noetic-policies package as the foundation of the Noetic ecosystem. This package provides policy specification format, parsing, validation, and a standard library of production-ready policies. The package enables developers to write declarative policies that govern autonomous AI agents and smart contracts, with comprehensive static analysis to catch errors before runtime. Policies support **weighted scoring** (transition costs, goal rewards, progress conditions for gradient-based heuristic search), **goal preference ranking** (priority + reward for multi-goal disambiguation), and **temporality as a first-class feature** (max_steps, deadlines, timeouts at both policy and goal level). Dual validation modes (fast <1s, thorough complete analysis including cost-aware pathfinding and temporal feasibility) with OpenTelemetry observability and format versioning support.
 
 ## Technical Context
 
@@ -107,13 +107,16 @@ packages/policies/              # noetic-policies package
 │   │   ├── __init__.py
 │   │   ├── schema_validator.py
 │   │   ├── constraint_validator.py
-│   │   ├── graph_analyzer.py  # State graph reachability/deadlock
+│   │   ├── scoring_validator.py  # Transition cost, goal scoring, progress conditions
+│   │   ├── temporal_validator.py # Temporal bounds validation & hierarchy checking
+│   │   ├── graph_analyzer.py  # State graph reachability/deadlock/cost-aware pathfinding
 │   │   └── validation_modes.py # Fast vs thorough modes
 │   ├── models/                # Pydantic models for policy entities
 │   │   ├── __init__.py
 │   │   ├── policy.py
 │   │   ├── constraint.py
 │   │   ├── state_graph.py
+│   │   ├── scoring.py         # ProgressCondition, TemporalBounds
 │   │   └── version.py
 │   ├── stdlib/                # Standard library policies
 │   │   ├── __init__.py
@@ -171,7 +174,7 @@ packages/policies/              # noetic-policies package
 - ✅ `research.md`: Technical decisions for graph analysis (NetworkX), testing patterns (pytest + Hypothesis + pytest-benchmark), CEL evaluation, OpenTelemetry integration
 
 **Phase 1 - Design & Contracts**:
-- ✅ `data-model.md`: Pydantic models for Policy, Constraint, StateGraph, State, Transition, Invariant, ValidationResult, ValidationError
+- ✅ `data-model.md`: Pydantic models for Policy, Constraint, StateGraph, State, Transition (with cost), Invariant, GoalState (with priority/reward/progress_conditions/temporal_bounds), ProgressCondition, TemporalBounds, ValidationResult, ValidationError, GraphAnalysisResult (with goal_costs/goal_min_steps/temporally_infeasible_goals)
 - ✅ `contracts/library-api.md`: Python API (PolicyParser, PolicyValidator, GraphAnalyzer, CELEvaluator, StandardLibrary, PolicyMigrator)
 - ✅ `contracts/cli-api.md`: CLI commands (validate, migrate, stdlib, version)
 - ✅ `quickstart.md`: 30-minute tutorial for SC-009
@@ -179,13 +182,15 @@ packages/policies/              # noetic-policies package
 
 ### Key Technical Decisions
 
-1. **Graph Analysis**: NetworkX 3.6.1+ (pure Python, excellent type hints, meets performance requirements)
+1. **Graph Analysis**: NetworkX 3.6.1+ (pure Python, excellent type hints, meets performance requirements). Includes Dijkstra's algorithm for cost-aware pathfinding and BFS for min-step temporal feasibility.
 2. **Testing**: pytest + Hypothesis + pytest-benchmark (property-based, performance, observability testing)
-3. **CEL Evaluation**: celpy library (deterministic, Python 3.11+ compatible)
-4. **Dual Validation Modes**: Fast (<1s) for development, Thorough (complete analysis) for CI/CD
+3. **CEL Evaluation**: celpy library (deterministic, Python 3.11+ compatible). Extended to validate numeric-type expressions for progress conditions and cost expressions.
+4. **Dual Validation Modes**: Fast (<1s) for development, Thorough (complete analysis including scoring consistency and temporal feasibility) for CI/CD
 5. **OpenTelemetry**: Comprehensive logging via opentelemetry-api/sdk (clarification Q3)
 6. **Versioning**: Semantic versioning with migration support (clarification Q4)
-7. **Standard Library**: Production-ready policies (token, voting, escrow) per clarification Q5
+7. **Standard Library**: Production-ready policies (token, voting, escrow, research agent) per clarification Q5
+8. **Weighted Scoring**: Transition costs (static + dynamic CEL), goal priority (ordinal), goal reward (cardinal), progress conditions (gradient signals 0.0–1.0)
+9. **Temporality**: First-class temporal bounds at policy and goal level — max_steps, deadline (CEL), timeout_seconds — with hierarchy validation and static feasibility checking
 
 ### Constitution Compliance
 

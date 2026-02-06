@@ -164,17 +164,18 @@ Parse and validate file in one step.
 
 #### Methods
 
-##### `analyze(state_graph: StateGraph, initial: str, goals: set[str]) -> GraphAnalysisResult`
+##### `analyze(state_graph: StateGraph, initial: str, goals: list[GoalState], policy_temporal_bounds: TemporalBounds | None = None) -> GraphAnalysisResult`
 
-Perform complete graph analysis.
+Perform complete graph analysis including cost-aware pathfinding and temporal feasibility checking.
 
 **Parameters**:
 - `state_graph` (StateGraph): State graph to analyze
 - `initial` (str): Initial state name
-- `goals` (set[str]): Goal state names
+- `goals` (list[GoalState]): Goal state objects (with scoring and temporal bounds)
+- `policy_temporal_bounds` (TemporalBounds | None): Global temporal bounds for feasibility checking
 
 **Returns**:
-- `GraphAnalysisResult`: Analysis results
+- `GraphAnalysisResult`: Analysis results including goal costs, min steps, and temporal feasibility
 
 **Example**:
 ```python
@@ -184,7 +185,8 @@ analyzer = GraphAnalyzer()
 result = analyzer.analyze(
     state_graph=policy.state_graph,
     initial=policy.state_graph.initial,
-    goals=policy.goal_states
+    goals=policy.goal_states,
+    policy_temporal_bounds=policy.temporal_bounds
 )
 
 if result.unreachable_states:
@@ -192,6 +194,16 @@ if result.unreachable_states:
 
 if result.deadlock_sccs:
     print(f"Deadlocks detected: {result.deadlock_sccs}")
+
+# Cost-aware analysis (thorough mode)
+if result.goal_costs:
+    for goal_name, cost in result.goal_costs.items():
+        print(f"Min cost to {goal_name}: {cost}")
+
+if result.temporally_infeasible_goals:
+    for goal_name in result.temporally_infeasible_goals:
+        steps = result.goal_min_steps[goal_name]
+        print(f"Goal '{goal_name}' infeasible: needs {steps} steps minimum")
 ```
 
 ##### `find_unreachable_states(state_graph: StateGraph, initial: str) -> set[str]`
@@ -297,7 +309,7 @@ Check if CEL expression is syntactically valid.
 Get a standard library policy by name.
 
 **Parameters**:
-- `name` (str): Policy name - "token_transfer", "voting", or "escrow"
+- `name` (str): Policy name - "token_transfer", "voting", "escrow", or "research_agent"
 
 **Returns**:
 - `Policy`: Standard library policy
@@ -424,6 +436,9 @@ result = validator.validate(policy)
 - `policy.name`: Policy name
 - `policy.num_states`: Number of states
 - `policy.num_constraints`: Number of constraints
+- `policy.num_goals`: Number of goal states
+- `policy.has_scoring`: Whether goals use priority/reward/progress conditions
+- `policy.has_temporal_bounds`: Whether policy or goals have temporal bounds
 - `validation.mode`: "fast" or "thorough"
 - `validation.duration_ms`: Validation time in milliseconds
 

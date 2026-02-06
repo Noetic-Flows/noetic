@@ -47,15 +47,17 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 
 - [ ] T009 [P] Create ValidationError dataclass in packages/policies/noetic_policies/models/__init__.py with fields (code, message, line_number, column_number, severity, fix_suggestion, documentation_url) and format() method
 - [ ] T010 [P] Create ValidationResult dataclass in packages/policies/noetic_policies/models/__init__.py with fields (is_valid, errors, warnings, metadata)
-- [ ] T011 [P] Create GraphAnalysisResult dataclass in packages/policies/noetic_policies/models/__init__.py with fields (unreachable_states, deadlock_sccs, goal_reachable, cycles)
+- [ ] T011 [P] Create GraphAnalysisResult dataclass in packages/policies/noetic_policies/models/__init__.py with fields (unreachable_states, deadlock_sccs, goal_reachable, cycles, goal_costs, goal_min_steps, temporally_infeasible_goals)
 - [ ] T012 [P] Create PolicyVersion Pydantic model in packages/policies/noetic_policies/models/version.py with from_string() and is_compatible() methods
 - [ ] T013 [P] Create Constraint Pydantic model in packages/policies/noetic_policies/models/constraint.py with name, expr, description, severity fields
 - [ ] T014 [P] Create Invariant Pydantic model in packages/policies/noetic_policies/models/__init__.py with name, expr, description fields
-- [ ] T015 [P] Create Transition Pydantic model in packages/policies/noetic_policies/models/__init__.py with to, preconditions, effects, description fields
-- [ ] T015a [P] Create GoalState Pydantic model in packages/policies/noetic_policies/models/__init__.py with name, conditions, description fields and condition syntax validator
+- [ ] T015 [P] Create Transition Pydantic model in packages/policies/noetic_policies/models/__init__.py with to, preconditions, effects, cost (float, default 1.0, ge=0.0), cost_expr (str|None, CEL), description fields
+- [ ] T015a [P] Create ProgressCondition Pydantic model in packages/policies/noetic_policies/models/__init__.py with expr, weight (default 1.0, gt=0.0), description fields and expr syntax validator
+- [ ] T015b [P] Create TemporalBounds Pydantic model in packages/policies/noetic_policies/models/__init__.py with max_steps (int|None, gt=0), deadline (str|None, CEL expr), timeout_seconds (float|None, gt=0.0), description fields and at-least-one-bound validator
+- [ ] T015c [P] Create GoalState Pydantic model in packages/policies/noetic_policies/models/__init__.py with name, conditions, priority (int, default 0), reward (float, default 1.0, gt=0.0), progress_conditions (list[ProgressCondition]), temporal_bounds (TemporalBounds|None), description fields and condition syntax validator
 - [ ] T016 Create State Pydantic model in packages/policies/noetic_policies/models/state_graph.py with name, preconditions, transitions, description fields
 - [ ] T017 Create StateGraph Pydantic model in packages/policies/noetic_policies/models/state_graph.py with initial, states fields and validators (unique state names, initial exists)
-- [ ] T018 Create Policy Pydantic model in packages/policies/noetic_policies/models/policy.py with all fields (version, cel_mode with default "safe", name, description, metadata, state_schema, constraints, state_graph, invariants, goal_states as list[GoalState]) and validators (state_schema types, goal_states exist in graph)
+- [ ] T018 Create Policy Pydantic model in packages/policies/noetic_policies/models/policy.py with all fields (version, cel_mode with default "safe", name, description, metadata, state_schema, constraints, state_graph, invariants, goal_states as list[GoalState], temporal_bounds as TemporalBounds|None) and validators (state_schema types, goal_states exist in graph, temporal_bounds hierarchy FR-008h)
 
 ### OpenTelemetry Infrastructure (FR-018, FR-019)
 
@@ -95,6 +97,12 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T031c [P] [US1] Add test to test_schema_validator.py - test state schema uses valid types (number, string, boolean, address, enum)
 - [ ] T031d [P] [US1] Add test to test_schema_validator.py - test goal conditions reference only schema-defined variables (FR-008b)
 - [ ] T031e [P] [US1] Add test to test_schema_validator.py - test goal conditions are satisfiable (FR-008c)
+- [ ] T031f [P] [US1] Add test to test_schema_validator.py - test transition cost values are non-negative (FR-008d)
+- [ ] T031g [P] [US1] Add test to test_schema_validator.py - test transition cost_expr is valid CEL evaluating to numeric (FR-008d)
+- [ ] T031h [P] [US1] Add test to test_schema_validator.py - test goal priority is integer and reward is positive (FR-008e)
+- [ ] T031i [P] [US1] Add test to test_schema_validator.py - test progress conditions are valid CEL evaluating to numeric, referencing schema variables (FR-008f)
+- [ ] T031j [P] [US1] Add test to test_schema_validator.py - test temporal bounds validation: max_steps > 0, deadline valid CEL, timeout_seconds > 0 (FR-008g)
+- [ ] T031k [P] [US1] Add test to test_schema_validator.py - test goal temporal bounds do not exceed policy temporal bounds (FR-008h)
 
 #### Unit Tests - Constraint Validation
 
@@ -111,6 +119,11 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T039 [P] [US1] Add test to test_graph_analyzer.py - test verify_goal_reachable() confirms path to goal exists
 - [ ] T040 [P] [US1] Add test to test_graph_analyzer.py - test unreachable goal state fails validation
 - [ ] T041 [P] [US1] Add test to test_graph_analyzer.py - test circular state graph with exit is valid
+- [ ] T041a [P] [US1] Add test to test_graph_analyzer.py - test goal_costs computed correctly using Dijkstra's with transition costs
+- [ ] T041b [P] [US1] Add test to test_graph_analyzer.py - test goal_min_steps computed correctly (unweighted shortest path)
+- [ ] T041c [P] [US1] Add test to test_graph_analyzer.py - test temporally_infeasible_goals detected when min_steps > max_steps
+- [ ] T041d [P] [US1] Add test to test_graph_analyzer.py - test temporal feasibility passes when min_steps ≤ max_steps
+- [ ] T041e [P] [US1] Add test to test_graph_analyzer.py - test goals ranked by priority then reward in analysis output
 
 #### Unit Tests - Dual Mode Validation (FR-016)
 
@@ -160,6 +173,11 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T063b [US1] Add state schema coverage check in packages/policies/noetic_policies/validator/schema_validator.py - verify all variables in constraints/effects/invariants are defined (FR-008a)
 - [ ] T063c [US1] Add goal condition validation in packages/policies/noetic_policies/validator/schema_validator.py - check CEL syntax and variable references (FR-008b)
 - [ ] T063d [US1] Add goal condition satisfiability check in packages/policies/noetic_policies/validator/schema_validator.py - detect contradictions with constraints/invariants (FR-008c)
+- [ ] T063e [US1] Add transition cost validation in packages/policies/noetic_policies/validator/schema_validator.py - validate cost ≥ 0 and cost_expr is valid numeric CEL (FR-008d)
+- [ ] T063f [US1] Add goal scoring validation in packages/policies/noetic_policies/validator/schema_validator.py - validate priority is int, reward > 0 (FR-008e)
+- [ ] T063g [US1] Add progress condition validation in packages/policies/noetic_policies/validator/schema_validator.py - validate CEL syntax, numeric type, schema variable references (FR-008f)
+- [ ] T063h [US1] Add temporal bounds validation in packages/policies/noetic_policies/validator/schema_validator.py - validate max_steps, deadline CEL, timeout_seconds (FR-008g)
+- [ ] T063i [US1] Add temporal bounds hierarchy check in packages/policies/noetic_policies/validator/schema_validator.py - goal bounds ≤ policy bounds (FR-008h)
 
 #### Constraint Validator
 
@@ -174,13 +192,16 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T069 [US1] Implement find_unreachable_states() method in packages/policies/noetic_policies/validator/graph_analyzer.py (FR-004)
 - [ ] T070 [US1] Implement detect_deadlocks() method using Tarjan's algorithm in packages/policies/noetic_policies/validator/graph_analyzer.py (FR-005)
 - [ ] T071 [US1] Implement verify_goal_reachable() method in packages/policies/noetic_policies/validator/graph_analyzer.py (FR-007)
-- [ ] T072 [US1] Implement analyze() method combining all checks in packages/policies/noetic_policies/validator/graph_analyzer.py
+- [ ] T071a [US1] Implement compute_goal_costs() method using Dijkstra's algorithm with transition cost weights in packages/policies/noetic_policies/validator/graph_analyzer.py
+- [ ] T071b [US1] Implement compute_goal_min_steps() method using BFS shortest path in packages/policies/noetic_policies/validator/graph_analyzer.py
+- [ ] T071c [US1] Implement check_temporal_feasibility() method comparing min_steps to max_steps bounds in packages/policies/noetic_policies/validator/graph_analyzer.py
+- [ ] T072 [US1] Implement analyze() method combining all checks (reachability, deadlocks, goal costs, temporal feasibility) in packages/policies/noetic_policies/validator/graph_analyzer.py
 
 #### Validation Modes
 
 - [ ] T073 [US1] Implement ValidationModes class in packages/policies/noetic_policies/validator/validation_modes.py with fast/thorough mode logic (FR-016)
 - [ ] T074 [US1] Implement fast mode (schema + constraint syntax + basic reachability) in packages/policies/noetic_policies/validator/validation_modes.py
-- [ ] T075 [US1] Implement thorough mode (fast + cycle detection + invariant consistency + edge cases) in packages/policies/noetic_policies/validator/validation_modes.py
+- [ ] T075 [US1] Implement thorough mode (fast + cycle detection + invariant consistency + scoring consistency + temporal feasibility + edge cases) in packages/policies/noetic_policies/validator/validation_modes.py
 
 #### Resource Monitoring
 
@@ -362,9 +383,11 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 
 - [ ] T165a [P] [US3] Create research_agent.yaml in packages/policies/noetic_policies/stdlib/research_agent.yaml - autonomous research agent with budget/time/quality constraints (SC-007)
 - [ ] T165b [P] [US3] Add constraints for budget limits, time deadlines, quality thresholds in research_agent.yaml
-- [ ] T165c [P] [US3] Add state graph (planning → searching → analyzing → reporting → complete|failed) in research_agent.yaml
+- [ ] T165c [P] [US3] Add state graph (planning → searching → analyzing → reporting → complete|failed) with transition costs reflecting API call expenses in research_agent.yaml
 - [ ] T165d [P] [US3] Add invariants for budget conservation and quality minimums in research_agent.yaml
 - [ ] T165e [P] [US3] Add retry logic and resource management in research_agent.yaml
+- [ ] T165f [P] [US3] Add goal scoring (priority/reward for complete vs failed, progress conditions for quality_score/papers_found) in research_agent.yaml
+- [ ] T165g [P] [US3] Add temporal bounds (max_steps for API calls, timeout_seconds for wall-clock, deadline for budget expiry) in research_agent.yaml
 
 #### Standard Library API
 
@@ -546,18 +569,18 @@ With 3 developers:
 
 ## Task Statistics
 
-- **Total Tasks**: 226
+- **Total Tasks**: ~250
 - **Phase 1 (Setup)**: 8 tasks
-- **Phase 2 (Foundational)**: 19 tasks (BLOCKS user stories - includes state schema models)
-- **Phase 3 (US1 - Validation)**: 74 tasks (37 tests + 37 implementation - includes state schema validation)
+- **Phase 2 (Foundational)**: 21 tasks (BLOCKS user stories - includes state schema models, ProgressCondition, TemporalBounds)
+- **Phase 3 (US1 - Validation)**: ~90 tasks (~45 tests + ~45 implementation - includes scoring validation, temporal feasibility, cost-aware graph analysis)
 - **Phase 4 (US2 - Parsing)**: 32 tasks (17 tests + 15 implementation)
-- **Phase 5 (US3 - Standard Library)**: 63 tasks (34 tests + 29 implementation)
+- **Phase 5 (US3 - Standard Library)**: 65 tasks (34 tests + 31 implementation - includes scoring/temporal for research agent)
 - **Phase 6 (Polish)**: 30 tasks
 
-**Parallel Opportunities**: 112+ tasks marked [P] can run in parallel
+**Parallel Opportunities**: 130+ tasks marked [P] can run in parallel
 
-**Test Tasks**: 88 test tasks (TDD approach per constitution)
-**Implementation Tasks**: 138 implementation tasks
+**Test Tasks**: ~100 test tasks (TDD approach per constitution)
+**Implementation Tasks**: ~150 implementation tasks
 
 ---
 
@@ -571,3 +594,7 @@ With 3 developers:
 - All 4 standard library policies must pass multi-layer verification suite (T124-T142g, T199)
 - Error messages must be actionable per SC-003 (verified in T201)
 - Quickstart must complete in <30 minutes per SC-009 (verified in T204)
+- Scoring validation (FR-008d/e/f): transition costs, goal priority/reward, progress conditions
+- Temporal validation (FR-008g/h): max_steps, deadline, timeout_seconds; hierarchy checking
+- Cost-aware graph analysis: Dijkstra's for goal costs, BFS for min steps, temporal feasibility (SC-012)
+- Research agent stdlib must demonstrate scoring + temporal features (T165f, T165g)

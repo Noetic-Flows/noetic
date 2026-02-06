@@ -93,7 +93,12 @@ $ noetic-policies validate policy.yaml --format json
     "version": "1.0",
     "mode": "fast",
     "duration_ms": 120,
-    "checks_performed": ["schema", "constraints", "basic_graph"]
+    "checks_performed": ["schema", "constraints", "basic_graph", "scoring", "temporal_bounds"],
+    "goals_summary": {
+      "count": 1,
+      "scored": true,
+      "temporally_bounded": true
+    }
   }
 }
 ```
@@ -152,9 +157,12 @@ Output:
 Validating policy...
 ✓ Schema validation passed
 ✓ Constraint syntax check passed (2 constraints)
-✓ State graph structure validated (3 states)
+✓ State graph structure validated (3 states, cost range: 0.0–1.0)
 ✓ Reachability check passed
-✓ Goal state reachable
+✓ Goal state reachable (1 goal: max_reached)
+✓ Goal scoring validated (priority=1, reward=10.0, 1 progress condition)
+✓ Temporal bounds validated (goal: 100 steps/30s, policy: 200 steps/60s)
+✓ Temporal feasibility passed (min_steps=2 ≤ max_steps=100)
 
 ✓ Policy validation successful
 ```
@@ -516,6 +524,8 @@ All CLI commands automatically create OpenTelemetry spans and export to configur
 #   - policy.validate
 #     - policy.validate.schema
 #     - policy.validate.constraints
+#     - policy.validate.scoring
+#     - policy.validate.temporal_bounds
 #     - policy.validate.state_graph
 ```
 

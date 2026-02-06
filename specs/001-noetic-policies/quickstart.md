@@ -75,11 +75,12 @@ Create a simple policy for a counter that increments up to a limit.
 ```yaml
 version: "1.0"
 name: counter
-description: Simple counter with max limit
+description: Simple counter with max limit and time budget
 
 state_schema:
   count: number
   max_limit: number
+  steps_taken: number
 
 constraints:
   - name: below_limit
@@ -101,8 +102,10 @@ state_graph:
         - to: incrementing
           preconditions:
             - below_limit
+          cost: 1.0
           description: Start incrementing
         - to: max_reached
+          cost: 0.0
           description: Counter at maximum
 
     - name: incrementing
@@ -111,6 +114,8 @@ state_graph:
         - to: ready
           effects:
             - "count = count + 1"
+            - "steps_taken = steps_taken + 1"
+          cost: 1.0
           description: Increment complete
 
     - name: max_reached
@@ -125,16 +130,32 @@ goal_states:
   - name: max_reached
     conditions:
       - "count == max_limit"
+    priority: 1
+    reward: 10.0
+    progress_conditions:
+      - expr: "count / max_limit"
+        weight: 1.0
+        description: Fraction of max_limit reached
+    temporal_bounds:
+      max_steps: 100
+      timeout_seconds: 30.0
+      description: Must reach max within 100 steps and 30 seconds
     description: Counter has reached its maximum value
+
+temporal_bounds:
+  max_steps: 200
+  timeout_seconds: 60.0
+  description: Global execution budget
 ```
 
 **What this demonstrates**:
 - **Version**: Policy format version
 - **State Schema**: Defines runtime state variables and their types
 - **Constraints**: CEL expressions for validation
-- **State Graph**: Transitions between states with preconditions
+- **State Graph**: Transitions between states with preconditions and **cost weights**
 - **Invariants**: Global rules that must always hold
-- **Goal States**: Success states with target conditions (enables goal-directed execution)
+- **Goal States**: Success states with **priority, reward, progress conditions** (gradient signals for heuristic search), and **per-goal temporal bounds**
+- **Temporal Bounds**: Global time/step limits for the entire policy, plus per-goal limits
 
 ---
 
@@ -153,6 +174,7 @@ Expected output:
 Version: 1.0
 States: 3
 Constraints: 2
+Goals: 1 (scored, temporally bounded)
 Mode: fast
 Duration: 0.08s
 ```
@@ -173,6 +195,8 @@ Constraints: 2
 Unreachable States: 0
 Deadlocks: 0
 Goal Reachable: Yes
+  max_reached: min_cost=2.0, min_steps=2, priority=1, reward=10.0
+Temporal Bounds: Feasible (min 2 steps ≤ goal max 100 ≤ policy max 200)
 Mode: thorough
 Duration: 0.15s
 ```

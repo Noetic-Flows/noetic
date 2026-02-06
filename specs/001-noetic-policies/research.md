@@ -79,9 +79,59 @@ class PolicyStateGraph(BaseModel):
         G = nx.DiGraph()
         G.add_nodes_from(self.states)
         for trans in self.transitions:
-            G.add_edge(trans.from_state, trans.to_state)
+            G.add_edge(trans.from_state, trans.to_state, weight=trans.cost)
         self._graph = G
         return G
+```
+
+### Cost-Aware Pathfinding
+
+NetworkX provides built-in support for weighted shortest paths, which is essential for the scoring system:
+
+```python
+# Minimum cost path to goal (uses Dijkstra's algorithm)
+# O((V + E) log V) — efficient for our use case
+cost = nx.dijkstra_path_length(G, initial_state, goal_state, weight='weight')
+path = nx.dijkstra_path(G, initial_state, goal_state, weight='weight')
+
+# Minimum steps (unweighted shortest path) for temporal feasibility
+min_steps = nx.shortest_path_length(G, initial_state, goal_state)
+
+# All-pairs shortest paths for comprehensive analysis
+all_costs = dict(nx.all_pairs_dijkstra_path_length(G, weight='weight'))
+```
+
+**Performance**: Dijkstra's on a 1000-node graph: ~20-80ms. Well within both fast and thorough mode budgets.
+
+### Temporal Feasibility Checking
+
+```python
+def check_temporal_feasibility(
+    G: nx.DiGraph,
+    initial: str,
+    goal_states: list[GoalState],
+    policy_bounds: TemporalBounds | None
+) -> list[str]:
+    """Return list of temporally infeasible goal names."""
+    infeasible = []
+    for goal in goal_states:
+        try:
+            min_steps = nx.shortest_path_length(G, initial, goal.name)
+        except nx.NetworkXNoPath:
+            continue  # Unreachable, caught by separate check
+
+        # Check goal-level max_steps
+        if goal.temporal_bounds and goal.temporal_bounds.max_steps is not None:
+            if min_steps > goal.temporal_bounds.max_steps:
+                infeasible.append(goal.name)
+                continue
+
+        # Check policy-level max_steps
+        if policy_bounds and policy_bounds.max_steps is not None:
+            if min_steps > policy_bounds.max_steps:
+                infeasible.append(goal.name)
+
+    return infeasible
 ```
 
 ### Dependencies
@@ -406,6 +456,9 @@ def validate_policy(policy):
 | OpenTelemetry testing | InMemorySpanExporter | **No external dependencies** - use SDK's in-memory exporter |
 | Performance testing | pytest-benchmark vs custom | **pytest-benchmark** - precise timing, statistical analysis, regression tracking |
 | Error message testing | Quality checklist | **4-element checklist**: location, problem, expected, suggestion |
+| Cost-aware pathfinding | NetworkX Dijkstra's algorithm | **nx.dijkstra_path_length** - O((V+E)logV), built-in weight support, ~20-80ms for 1000 nodes |
+| Temporal feasibility | BFS shortest path + bounds checking | **nx.shortest_path_length** for min-steps, compare against max_steps bounds |
+| Scoring validation | CEL type checking for numeric expressions | **celpy** type inference for progress conditions and cost expressions |
 
 All NEEDS CLARIFICATION items from Technical Context have been resolved with research-backed decisions.
 
