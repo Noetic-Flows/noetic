@@ -1,15 +1,6 @@
 {
-  "folders": [
-    { "name": "Noetic Spec", "path": "packages/spec" },
-    { "name": "Noetic StdLib", "path": "packages/stdlib" },
-    { "name": "Lang SDK (Python)", "path": "packages/lang-python" },
-    { "name": "Engine SDK (Python)", "path": "packages/engine-python" },
-    { "name": "App: CLI", "path": "apps/python-cli" }
-  ],
+  "folders": [],
   "settings": {
-    "python.analysis.extraPaths": [
-      "./packages/lang-python",
-      "./packages/engine-python"
-    ]
+    "python.analysis.extraPaths": []
   }
 }

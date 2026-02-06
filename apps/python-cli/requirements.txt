@@ -1,7 +1,0 @@
--e ../../packages/lang-python
--e ../../packages/knowledge-python
--e ../../packages/stage-python
--e ../../packages/conscience-python
--e ../../packages/engine-python
-fastapi
-uvicorn
