@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import BaseModel, Field, field_validator, model_validator
+
 __all__ = [
     "ValidationError",
     "ValidationResult",
@@ -74,9 +76,6 @@ class GraphAnalysisResult:
 
 
 # T014: Invariant Pydantic model
-from pydantic import BaseModel, Field
-
-
 class Invariant(BaseModel):
     """A logical expression that must remain true throughout policy execution."""
 
@@ -96,6 +95,7 @@ class Transition(BaseModel):
     cost_expr: str | None = None
     description: str | None = None
 
+    @field_validator("cost_expr")
     @classmethod
     def validate_cost_expr_syntax(cls, v: str | None) -> str | None:
         """Validate cost expression syntax."""
@@ -112,6 +112,7 @@ class ProgressCondition(BaseModel):
     weight: float = Field(default=1.0, gt=0.0)
     description: str | None = None
 
+    @field_validator("expr")
     @classmethod
     def validate_expr_syntax(cls, v: str) -> str:
         """Validate expression syntax."""
@@ -121,9 +122,6 @@ class ProgressCondition(BaseModel):
 
 
 # T015b: TemporalBounds Pydantic model
-from pydantic import model_validator
-
-
 class TemporalBounds(BaseModel):
     """Time and step constraints that limit policy or goal execution."""
 
