@@ -105,11 +105,10 @@ packages/policies/              # noetic-policies package
 │   │   └── cel_parser.py
 │   ├── validator/             # Static analysis & validation
 │   │   ├── __init__.py
-│   │   ├── schema_validator.py
+│   │   ├── schema_validator.py  # Schema, scoring (FR-008d/e/f), temporal (FR-008g/h) validation
 │   │   ├── constraint_validator.py
-│   │   ├── scoring_validator.py  # Transition cost, goal scoring, progress conditions
-│   │   ├── temporal_validator.py # Temporal bounds validation & hierarchy checking
 │   │   ├── graph_analyzer.py  # State graph reachability/deadlock/cost-aware pathfinding
+│   │   ├── resource_monitor.py # CPU/memory monitoring (FR-017)
 │   │   └── validation_modes.py # Fast vs thorough modes
 │   ├── models/                # Pydantic models for policy entities
 │   │   ├── __init__.py
@@ -144,8 +143,13 @@ packages/policies/              # noetic-policies package
 │   ├── integration/
 │   │   ├── test_validation_workflow.py
 │   │   └── test_stdlib_policies.py
-│   └── property/              # Property-based tests
-│       └── test_validation_properties.py
+│   ├── property/              # Property-based tests
+│   │   └── test_validation_properties.py
+│   ├── comparison/            # Comparison tests (Constitution IV)
+│   │   ├── test_validation_comparison.py
+│   │   └── test_stdlib_comparison.py
+│   └── performance/
+│       └── test_validation_performance.py
 ├── docs/
 │   ├── policy-specification.md
 │   ├── cel-guide.md

@@ -1,0 +1,48 @@
+version: "1.0"
+name: simple_counter
+description: A simple counter policy for testing
+
+state_schema:
+  count: number
+  max_limit: number
+
+constraints:
+  - name: positive_count
+    expr: "count >= 0"
+    description: Count must be non-negative
+
+  - name: below_limit
+    expr: "count < max_limit"
+    description: Count must be below maximum
+
+state_graph:
+  initial: ready
+  states:
+    - name: ready
+      description: Ready to count
+      transitions:
+        - to: counting
+          preconditions:
+            - below_limit
+          cost: 1.0
+
+    - name: counting
+      description: Incrementing count
+      transitions:
+        - to: ready
+          effects:
+            - "count = count + 1"
+          cost: 1.0
+
+invariants:
+  - name: count_in_range
+    expr: "count >= 0 && count <= max_limit"
+    description: Count stays within valid range
+
+goal_states:
+  - name: ready
+    conditions:
+      - "count == max_limit"
+    priority: 1
+    reward: 10.0
+    description: Counter has reached maximum
