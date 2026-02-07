@@ -20,6 +20,13 @@
 - Q: Which CEL operations should be allowed in constraint expressions? → A: Three-tier approach with configurable restriction mode - (1) Safe subset: deterministic operations only (comparisons, logical, arithmetic, string/list operations - excludes I/O, time, random, external calls), (2) Full CEL: complete standard library when explicitly enabled, (3) Extension points: mechanism for custom deterministic functions. Default mode enforces safe subset for determinism guarantees (similar to strict mode). Policies can declare required mode; validation enforces restrictions based on configuration
 - Q: How should standard library production-readiness be verified beyond static verification? → A: Multi-layer verification suite - Layer 1: Static verification (unreachable states, deadlocks), Layer 2: Property-based testing with Hypothesis (invariant preservation under random state transitions), Layer 3: Scenario-based testing (documented test cases for each edge case), Layer 4: Security audit checklist (reentrancy, overflow, etc.). This provides quantitative evidence of production-readiness and serves as a template for user policies
 
+### Session 2026-02-07
+
+- Q: What are the reference requirements for verifying SC-006 (policy format expressiveness for ERC-20) and SC-007 (policy format expressiveness for research agents)? → A: Use OpenZeppelin ERC-20 specification as the reference requirements checklist for SC-006 (covering all standard operations: transfer, approve, transferFrom, balanceOf, totalSupply, mint, burn, allowances, events, and edge cases). For SC-007, create minimal research agent requirements checklist covering budget constraints, time limits, quality thresholds, and partial progress tracking.
+- Q: How should the SC-003 standardized error corpus be created for testing error message actionability? → A: Create seed list of 10-15 common errors during planning phase (missing required sections, undefined variables in constraints/effects, malformed CEL expressions, duplicate state names, unreachable states, contradictory invariants, invalid cost/priority values, temporal bound violations); expand to 20+ errors during implementation based on real validation errors encountered in testing and development.
+- Q: What format should validation output use for successful runs, warnings, and fast mode skipped checks? → A: Structured summary for successful runs showing checks performed and results (e.g., "✓ Schema valid (5 sections), 3 states analyzed, 2 transitions validated, 0 unreachable states, 0 deadlocks"); severity levels (ERROR/WARNING/INFO) distinguish critical failures from warnings (e.g., resource usage warnings); fast mode output indicates which thorough-mode checks were skipped (e.g., "⊘ Skipped in fast mode: cycle detection, invariant consistency, comprehensive edge cases").
+- Q: What memory strategy should the validator use for extremely large policies (>1000 states)? → A: Phase 1 implementation uses in-memory state graph loading with clear error message if policy exceeds available system memory. Phase 2 (if needed based on real-world usage) will implement streaming/chunked analysis to handle arbitrarily large policies. The 1GB default memory warning threshold (from earlier clarification) applies; policies approaching this limit trigger warnings but validation continues until memory exhaustion.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Write and Validate Policy Specifications (Priority: P1)
@@ -77,7 +84,7 @@ A developer wants to use common policy patterns (token transfer, voting, escrow)
 
 ### Edge Cases
 
-- What happens when a policy file is extremely large (>100 states = large; >1000 states = extremely large)? → Fast mode provides rapid basic checks with performance warning if >100 states; thorough mode performs complete analysis without time constraint regardless of size
+- What happens when a policy file is extremely large (>100 states = large; >1000 states = extremely large)? → Fast mode provides rapid basic checks with performance warning if >100 states; thorough mode performs complete analysis without time constraint regardless of size. Memory warning issued when approaching 1GB threshold (configurable). In Phase 1, validation fails with clear error message if policy exceeds available system memory; Phase 2 may add streaming/chunked analysis for arbitrarily large policies.
 - How does the system handle circular dependencies in state graphs? → Circular graphs are valid if there exists an exit transition from the cycle; deadlock detection (FR-005) identifies terminal cycles without exits (tested in T041)
 - What happens when constraint expressions reference undefined variables? → Validation fails with actionable error identifying the undefined variable
 - How are policies with missing required sections handled? → Schema validation (FR-002) fails with clear error identifying missing sections
@@ -114,7 +121,11 @@ A developer wants to use common policy patterns (token transfer, voting, escrow)
 - **FR-008f**: System MUST validate progress conditions are well-formed CEL expressions referencing only state schema variables and evaluating to numeric type (0.0–1.0 range)
 - **FR-008g**: System MUST validate temporal bounds: max_steps > 0 if specified, deadline expressions are well-formed CEL, timeout_seconds > 0 if specified
 - **FR-008h**: System MUST validate that policy-level temporal bounds do not contradict goal-level temporal bounds (validation REJECTS with error code E-TEMPORAL-HIERARCHY when goal deadline exceeds policy deadline, goal timeout_seconds exceeds policy timeout_seconds, or goal max_steps exceeds policy max_steps)
-- **FR-009**: System MUST provide clear, actionable error messages for all validation failures in both machine-readable JSON format (with fields: code, severity, message, location, suggestion, docs_url) and structured human-readable format (with error codes, line/column info, fix suggestions, documentation links)
+- **FR-009**: System MUST provide clear, actionable validation output including:
+  - **Error messages**: Both machine-readable JSON format (fields: code, severity, message, location, suggestion, docs_url) and structured human-readable format (error codes, line/column info, fix suggestions, documentation links)
+  - **Success output**: Structured summary showing checks performed and results (e.g., "✓ Schema valid (5 sections), 3 states analyzed, 0 unreachable, 0 deadlocks")
+  - **Severity levels**: ERROR (critical failures), WARNING (non-blocking issues like resource usage), INFO (informational messages)
+  - **Fast mode transparency**: Output indicates which thorough-mode checks were skipped (e.g., "⊘ Skipped in fast mode: cycle detection, invariant consistency")
 - **FR-010**: System MUST support programmatic access to parsed policy data structures
 - **FR-011**: System MUST include a standard library with exactly four production-ready policies in Phase 1 (additional policies deferred to Phase 2 per YAGNI principle): ERC-20 compliant token transfer (including all standard operations and edge cases), simple majority voting (with comprehensive validation), time-locked escrow (with security hardening), and autonomous research agent (with budget/time/quality constraints)
 - **FR-012**: All standard library policies MUST pass multi-layer verification suite: (1) complete static verification, (2) property-based testing for invariant preservation, (3) scenario-based testing with documented edge cases, (4) security audit checklist covering common vulnerabilities
@@ -157,11 +168,27 @@ A developer wants to use common policy patterns (token transfer, voting, escrow)
 
 - **SC-001**: Developers can validate policies in fast mode and receive basic validation results in under 1 second for policies up to 100 states (graceful degradation with performance warning for larger policies)
 - **SC-002**: Static analysis in thorough mode correctly identifies 100% of unreachable states and deadlocks in test suite policies
-- **SC-003**: Error messages allow developers to fix 90% of policy errors without consulting documentation (measured via user testing with 10+ developers on a standardized error corpus of 20+ common policy mistakes; each developer attempts to fix errors using only error messages; success = fix applied correctly without external docs)
+- **SC-003**: Error messages allow developers to fix 90% of policy errors without consulting documentation
+  - **Measurement Method**: User testing with 10+ developers (no prior Noetic experience, familiar with YAML and basic logical expressions) on standardized error corpus of 20+ common policy mistakes categorized by type (syntax, semantic, logic); developers timed and observed; "success" = correct fix applied without external docs
+  - **Success Threshold**: ≥90% of errors fixed correctly using only error messages
+  - **Baseline**: Currently unmeasured (new feature)
+  - **Error Corpus Creation**: Seed list of 10-15 common errors created during planning (missing sections, undefined variables, malformed CEL, duplicate state names, unreachable states, contradictory invariants, invalid cost/priority values, temporal violations); expanded to 20+ during implementation based on real validation errors
+  - **Test Design**: Errors include missing sections, malformed CEL, unreachable states, type mismatches, contradictory invariants
 - **SC-004**: All four standard library policies (token transfer, voting, escrow, research agent) pass the complete multi-layer verification suite (static verification, property-based testing, scenario-based testing, security audit) demonstrating quantifiable production-ready quality
 - **SC-005**: Parsed policy data structures can be programmatically accessed and manipulated by other packages
 - **SC-006**: The policy specification format can express all requirements needed for production-ready ERC-20 token contracts including edge cases, security constraints, and gas optimization considerations
+  - **Reference Requirements**: OpenZeppelin ERC-20 specification (all standard operations: transfer, approve, transferFrom, balanceOf, totalSupply, mint, burn, allowances, events, and edge cases including zero-value transfers, allowance race conditions, overflow prevention)
+  - **Measurement Method**: Token transfer stdlib policy validates successfully and covers all ERC-20 operations; comparison tests verify alignment with OpenZeppelin reference implementation
+  - **Success Threshold**: ERC-20 policy passes multi-layer verification suite (Layer 1-4)
+  - **Baseline**: N/A (expressiveness requirement)
+  - **Dependencies**: noetic-compiler package for compilation validation; FR-011 token transfer policy validates independently
+
 - **SC-007**: The policy specification format can express all requirements needed for autonomous research agents with budget/time/quality constraints
+  - **Reference Requirements**: Minimal research agent requirements checklist (budget constraints, time limits, quality thresholds, partial progress tracking)
+  - **Measurement Method**: Research agent stdlib policy validates successfully with temporal bounds, cost constraints, and goal progress conditions
+  - **Success Threshold**: Research agent policy passes multi-layer verification suite (Layer 1-4)
+  - **Baseline**: N/A (expressiveness requirement)
+  - **Dependencies**: noetic-kernel package for execution validation; FR-011 research agent policy validates independently
 - **SC-008**: Validation catches 100% of malformed constraint expressions before runtime
 - **SC-009**: Documentation allows a new developer (familiar with YAML and basic logical expressions; no prior Noetic experience) to write their first valid policy in under 30 minutes
 - **SC-010**: Validation logs provide complete trace of all checks performed, enabling developers to understand validation behavior without reading source code
