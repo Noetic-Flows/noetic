@@ -1,0 +1,17 @@
+version: "1.0"
+name: invalid_policy
+
+state_schema:
+  count: number
+
+# Missing constraints section - should fail!
+
+state_graph:
+  initial: nonexistent  # Error: state doesn't exist
+  states:
+    - name: start
+      transitions:
+        - to: orphan
+
+    - name: orphan
+      # No transitions out - could be deadlock or goal

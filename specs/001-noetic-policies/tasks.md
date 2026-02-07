@@ -72,6 +72,9 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T024 Implement validate_syntax() method in packages/policies/noetic_policies/cel_evaluator/__init__.py for CEL expression syntax checking
 - [ ] T025 Implement safe mode operation filter in packages/policies/noetic_policies/cel_evaluator/__init__.py (comparisons, logical, arithmetic, string/list - exclude I/O, time, random)
 - [ ] T026 [P] Create CEL mode configuration schema in packages/policies/noetic_policies/cel_evaluator/modes.py with safe/full/extended definitions
+- [ ] T026a [P] Create test_cel_mode_config.py in packages/policies/tests/unit/test_cel_mode_config.py - test system config file enforces cel_mode restrictions (FR-014a)
+- [ ] T026b [P] Add test to test_cel_mode_config.py - test policy cel_mode field is parsed and validated (defaults to "safe" if unspecified)
+- [ ] T026c [P] Add test to test_cel_mode_config.py - test validation rejects policy when cel_mode exceeds system-configured restrictions
 
 **Checkpoint**: Foundation ready - all models, observability, and CEL infrastructure complete. User story implementation can now begin.
 
@@ -95,10 +98,12 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T031a [P] [US1] Add test to test_schema_validator.py - test transitions have well-formed preconditions and effects (FR-006)
 - [ ] T031b [P] [US1] Add test to test_schema_validator.py - test state schema defines all referenced variables (FR-008a)
 - [ ] T031c [P] [US1] Add test to test_schema_validator.py - test state schema uses valid types (number, string, boolean, address, enum)
+- [ ] T031c-1 [P] [US1] Add test to test_schema_validator.py - test state schema enum type specifies valid values list
 - [ ] T031d [P] [US1] Add test to test_schema_validator.py - test goal conditions reference only schema-defined variables (FR-008b)
 - [ ] T031e [P] [US1] Add test to test_schema_validator.py - test goal conditions are satisfiable (FR-008c)
 - [ ] T031f [P] [US1] Add test to test_schema_validator.py - test transition cost values are non-negative (FR-008d)
 - [ ] T031g [P] [US1] Add test to test_schema_validator.py - test transition cost_expr is valid CEL evaluating to numeric (FR-008d)
+- [ ] T031g-1 [P] [US1] Add test to test_schema_validator.py - test transition with both cost and cost_expr emits warning that cost_expr takes precedence
 - [ ] T031h [P] [US1] Add test to test_schema_validator.py - test goal priority is integer and reward is positive (FR-008e)
 - [ ] T031i [P] [US1] Add test to test_schema_validator.py - test progress conditions are valid CEL evaluating to numeric, referencing schema variables (FR-008f)
 - [ ] T031j [P] [US1] Add test to test_schema_validator.py - test temporal bounds validation: max_steps > 0, deadline valid CEL, timeout_seconds > 0 (FR-008g)
@@ -124,12 +129,15 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T041c [P] [US1] Add test to test_graph_analyzer.py - test temporally_infeasible_goals detected when min_steps > max_steps
 - [ ] T041d [P] [US1] Add test to test_graph_analyzer.py - test temporal feasibility passes when min_steps ≤ max_steps
 - [ ] T041e [P] [US1] Add test to test_graph_analyzer.py - test goals ranked by priority then reward in analysis output
+- [ ] T041f [P] [US1] Add test to test_graph_analyzer.py - test multiple goals with equal priority are disambiguated by reward value (higher reward preferred)
 
 #### Unit Tests - Dual Mode Validation (FR-016)
 
 - [ ] T042 [P] [US1] Create test_validation_modes.py in packages/policies/tests/unit/test_validation_modes.py - test fast mode completes in <1 second (SC-001)
-- [ ] T043 [P] [US1] Add test to test_validation_modes.py - test fast mode runs schema + constraint syntax + basic reachability only
-- [ ] T044 [P] [US1] Add test to test_validation_modes.py - test thorough mode runs all checks (fast + cycles + invariants + edge cases)
+- [ ] T043 [P] [US1] Add test to test_validation_modes.py - test fast mode runs schema (FR-002) + constraint syntax (FR-003) + transition well-formedness (FR-006) + basic reachability (FR-004 shallow BFS) only
+- [ ] T044 [P] [US1] Add test to test_validation_modes.py - test thorough mode runs all checks (fast + cycle detection + deadlock detection FR-005 + invariant consistency + scoring consistency + temporal feasibility + edge cases)
+- [ ] T044a [P] [US1] Add test to test_validation_modes.py - test fast mode SKIPS temporal feasibility analysis (verify no min-steps computation in fast mode)
+- [ ] T044b [P] [US1] Add test to test_validation_modes.py - test fast mode SKIPS scoring consistency checks (verify no cost-aware pathfinding in fast mode)
 - [ ] T045 [P] [US1] Add test to test_validation_modes.py - test thorough mode detects deadlocks missed by fast mode
 
 #### Unit Tests - Resource Monitoring (FR-017)
@@ -142,6 +150,7 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 
 - [ ] T049 [P] [US1] Create test_error_formatting.py in packages/policies/tests/unit/test_error_formatting.py - test error includes code, line number, column, fix suggestion
 - [ ] T050 [P] [US1] Add test to test_error_formatting.py - test JSON error format matches schema (code, severity, message, location, suggestion, docs_url)
+- [ ] T050a [P] [US1] Add test to test_error_formatting.py - test error docs_url field points to valid documentation section for each error code (verify URLs are not broken)
 - [ ] T051 [P] [US1] Add test to test_error_formatting.py - test human-readable error format is actionable
 
 #### Integration Tests
@@ -149,6 +158,8 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T052 [P] [US1] Create test_validation_workflow.py in packages/policies/tests/integration/test_validation_workflow.py - test end-to-end validation of valid policy
 - [ ] T053 [P] [US1] Add test to test_validation_workflow.py - test end-to-end validation catches all error types in one run
 - [ ] T054 [P] [US1] Add test to test_validation_workflow.py - test validation with OpenTelemetry creates spans
+- [ ] T054a [P] [US1] Add test to test_validation_workflow.py - test all major validation operations (schema, constraint, graph analysis) emit OpenTelemetry spans with correct attributes (FR-019)
+- [ ] T054b [P] [US1] Add test to test_validation_workflow.py - test validation metrics (duration, mode, error count) are recorded via OpenTelemetry (FR-019)
 
 #### Property-Based Tests
 
@@ -156,10 +167,17 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T056 [P] [US1] Add test to test_validation_properties.py - test valid policy always passes both modes
 - [ ] T057 [P] [US1] Add test to test_validation_properties.py - generate random policies and verify consistent validation results
 
+#### Comparison Tests (Constitution Principle IV)
+
+- [ ] T057a [P] [US1] Create test_validation_comparison.py in packages/policies/tests/comparison/test_validation_comparison.py - compare validation errors against hand-crafted expected error catalog for 10+ known-bad policies
+- [ ] T057b [P] [US1] Add test to test_validation_comparison.py - compare fast mode vs thorough mode error detection completeness (thorough must be superset of fast)
+
 #### Performance Tests (SC-001)
 
-- [ ] T058 [P] [US1] Create test_validation_performance.py in packages/policies/tests/performance/test_validation_performance.py - benchmark fast mode <1s on various policy sizes (5, 10, 20, 50 states)
+- [ ] T058 [P] [US1] Create test_validation_performance.py in packages/policies/tests/performance/test_validation_performance.py - benchmark fast mode <1s on policy sizes up to 100 states (5, 10, 20, 50, 100 states); verify performance warning emitted for >100 states
 - [ ] T059 [P] [US1] Add test to test_validation_performance.py - benchmark thorough mode performance (no time constraint)
+
+**⚠️ TDD APPROVAL GATE** (Constitution Principle IV): All US1 tests (T027-T059) must be written, reviewed by user, and verified to FAIL before proceeding to implementation tasks T060+. User must explicitly approve test suite completeness.
 
 ### Implementation for User Story 1
 
@@ -244,7 +262,7 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 
 - [ ] T092 [P] [US2] Create test_policy_parser.py in packages/policies/tests/unit/test_policy_parser.py - test parse valid YAML into Policy object
 - [ ] T093 [P] [US2] Add test to test_policy_parser.py - test all policy sections parsed correctly (constraints, state_graph, invariants, goal_states)
-- [ ] T094 [P] [US2] Add test to test_policy_parser.py - test malformed YAML fails with clear error
+- [ ] T094 [P] [US2] Add test to test_policy_parser.py - test malformed YAML fails with clear error (error must include: 1) what's invalid, 2) where (line/col), 3) expected format)
 - [ ] T095 [P] [US2] Add test to test_policy_parser.py - test parse preserves constraint expressions exactly
 - [ ] T096 [P] [US2] Add test to test_policy_parser.py - test parse preserves state graph structure (nodes, edges, preconditions, effects)
 
@@ -344,6 +362,14 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 - [ ] T142e [P] [US3] Add test to test_stdlib_research_agent.py - Layer 3: scenario test for quality threshold not met (retry logic)
 - [ ] T142f [P] [US3] Add test to test_stdlib_research_agent.py - Layer 3: scenario test for successful completion within constraints
 - [ ] T142g [P] [US3] Add test to test_stdlib_research_agent.py - Layer 4: security audit checklist (SC-007)
+- [ ] T142h [P] [US3] Add test to test_stdlib_research_agent.py - Layer 3: scenario test for partial budget recovery on failure (verify budget tracking on incomplete execution)
+
+#### Comparison Tests (Constitution Principle IV)
+
+- [ ] T142h [P] [US3] Create test_stdlib_comparison.py in packages/policies/tests/comparison/test_stdlib_comparison.py - compare token_transfer.yaml against ERC-20 standard specification requirements (all standard operations covered)
+- [ ] T142i [P] [US3] Add test to test_stdlib_comparison.py - compare voting.yaml against simple majority voting reference implementation behavior
+- [ ] T142j [P] [US3] Add test to test_stdlib_comparison.py - compare escrow.yaml against time-locked escrow reference implementation behavior
+- [ ] T142k [P] [US3] Add test to test_stdlib_comparison.py - compare research_agent.yaml against documented research agent requirements (budget/time/quality constraints)
 
 #### Standard Library API Tests
 
@@ -416,6 +442,8 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 
 - [ ] T175 [P] Create test_migration.py in packages/policies/tests/unit/test_migration.py - test migrate v0.9 to v1.0
 - [ ] T176 [P] Add test to test_migration.py - test can_migrate() checks version compatibility
+- [ ] T176a [P] Add test to test_migration.py - test loading v0.8 policy fails with clear version incompatibility error (only current + 1 previous supported per FR-020)
+- [ ] T176b [P] Add test to test_migration.py - test deprecation warnings emitted when loading v0.9 policy (FR-022)
 - [ ] T177 Implement PolicyMigrator class in packages/policies/noetic_policies/migration/migrator.py
 - [ ] T178 Implement migrate(policy, target_version) method in packages/policies/noetic_policies/migration/migrator.py
 - [ ] T179 Implement can_migrate() method in packages/policies/noetic_policies/migration/migrator.py
@@ -424,16 +452,19 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 
 ### CLI Enhancements
 
+- [ ] T181a [P] Create test_cli_enhancements.py in packages/policies/tests/integration/test_cli_enhancements.py - test version command output format
 - [ ] T182 [P] Implement version command in packages/policies/noetic_policies/cli/version.py showing package and policy format versions
 - [ ] T183 [P] Add configuration file support in packages/policies/noetic_policies/cli/__init__.py (~/.config/noetic/policies.yaml)
+- [ ] T183a [P] Add test to test_cli_enhancements.py - test config file loading and precedence
 - [ ] T184 [P] Add environment variable support in packages/policies/noetic_policies/cli/__init__.py (NOETIC_POLICIES_CONFIG, NOETIC_NO_COLOR, NOETIC_POLICIES_MODE)
+- [ ] T184a [P] Add test to test_cli_enhancements.py - test environment variable override behavior
 - [ ] T185 [P] Add shell completion support in packages/policies/noetic_policies/cli/__init__.py (bash, zsh, fish)
 - [ ] T186 Setup CLI entry point in packages/policies/pyproject.toml (noetic-policies command)
 
 ### Documentation (FR-015, SC-009)
 
 - [ ] T187 [P] Create policy-specification.md in packages/policies/docs/policy-specification.md - complete policy format reference with CEL modes
-- [ ] T187a Verify policy-specification.md covers all FR requirements (FR-001 through FR-022) and documents cel_mode field format and behavior (FR-015)
+- [ ] T187a Verify policy-specification.md covers ALL FR requirements (FR-001 through FR-022) including: cel_mode field format (FR-015), transition cost semantics (static/dynamic/default) (FR-015a), temporal bounds semantics (max_steps/deadline/timeout_seconds at policy and goal level) (FR-015b), goal scoring semantics (priority/reward/progress_conditions) (FR-015c)
 - [ ] T188 [P] Create cel-guide.md in packages/policies/docs/cel-guide.md - CEL expression syntax and examples for each mode (safe/full/extended)
 - [ ] T189 [P] Create api-reference/ directory in packages/policies/docs/api-reference/ with auto-generated docs from docstrings
 - [ ] T190 [P] Copy quickstart.md to packages/policies/docs/quickstart.md from specs/001-noetic-policies/quickstart.md
@@ -450,9 +481,11 @@ Based on plan.md structure: `packages/policies/` (monorepo package)
 
 ### Final Integration
 
-- [ ] T199 Run all 4 stdlib policies (token, voting, escrow, research agent) through validation to verify they pass (FR-012, SC-004)
+- [ ] T199 Run all 4 stdlib policies (token, voting, escrow, research agent) through complete 4-layer verification suite: (1) static verification in thorough mode, (2) property-based tests for invariant preservation, (3) scenario-based edge case tests, (4) security audit checklist - verify all layers pass (FR-012, SC-004)
 - [ ] T200 Run performance benchmarks to verify fast mode <1s (SC-001) and thorough mode 100% accuracy (SC-002)
-- [ ] T201 Test error messages against SC-003 (90% fixable without docs)
+- [ ] T201 Create standardized error corpus with 20+ common policy mistakes (missing sections, malformed CEL, unreachable states, type mismatches, etc.)
+- [ ] T201a Conduct user testing with 10+ developers: each developer attempts to fix errors from corpus using only error messages (no documentation access)
+- [ ] T201b Measure SC-003: verify 90% of errors are fixed correctly without consulting external documentation
 - [ ] T202 Verify OpenTelemetry spans are created for all major operations (FR-019)
 - [ ] T203 Test CLI in all output modes (human, json) and verify exit codes
 - [ ] T204 Run quickstart tutorial end-to-end to verify SC-009 (functional correctness and <30 minute completion time)
@@ -569,18 +602,18 @@ With 3 developers:
 
 ## Task Statistics
 
-- **Total Tasks**: ~250
+- **Total Tasks**: ~275 (updated after remediation analysis)
 - **Phase 1 (Setup)**: 8 tasks
-- **Phase 2 (Foundational)**: 21 tasks (BLOCKS user stories - includes state schema models, ProgressCondition, TemporalBounds)
-- **Phase 3 (US1 - Validation)**: ~90 tasks (~45 tests + ~45 implementation - includes scoring validation, temporal feasibility, cost-aware graph analysis)
-- **Phase 4 (US2 - Parsing)**: 32 tasks (17 tests + 15 implementation)
-- **Phase 5 (US3 - Standard Library)**: 65 tasks (34 tests + 31 implementation - includes scoring/temporal for research agent)
-- **Phase 6 (Polish)**: 30 tasks
+- **Phase 2 (Foundational)**: 24 tasks (BLOCKS user stories - includes state schema models, ProgressCondition, TemporalBounds, CEL mode config tests)
+- **Phase 3 (US1 - Validation)**: ~100 tasks (~52 tests + ~48 implementation - includes scoring validation, temporal feasibility, cost-aware graph analysis, OpenTelemetry property tests, comparison tests)
+- **Phase 4 (US2 - Parsing)**: 33 tasks (18 tests + 15 implementation)
+- **Phase 5 (US3 - Standard Library)**: 70 tasks (39 tests + 31 implementation - includes scoring/temporal for research agent, comparison tests)
+- **Phase 6 (Polish)**: 40 tasks (includes user testing for SC-003, documentation verification, CLI tests)
 
-**Parallel Opportunities**: 130+ tasks marked [P] can run in parallel
+**Parallel Opportunities**: 140+ tasks marked [P] can run in parallel
 
-**Test Tasks**: ~100 test tasks (TDD approach per constitution)
-**Implementation Tasks**: ~150 implementation tasks
+**Test Tasks**: ~115 test tasks (TDD approach per constitution - includes Unit, Integration, Property-based, Comparison per Constitution IV)
+**Implementation Tasks**: ~160 implementation tasks
 
 ---
 
