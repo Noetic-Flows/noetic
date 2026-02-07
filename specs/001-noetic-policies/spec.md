@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-noetic-policies`
 **Created**: 2026-02-05
-**Status**: Draft
+**Status**: Ready for Implementation
 **Input**: User description: "Build the noetic-policies package"
 
 ## Clarifications
@@ -13,7 +13,7 @@
 - Q: Should the validation system enforce resource limits (CPU time, memory) to prevent runaway analysis of pathological policies? → A: Soft limits with warnings - validation completes but warns if resource usage is high (organizations can harden limits in their deployment environments if needed)
 - Q: What level of diagnostic information should validation provide beyond error messages? → A: Comprehensive logging - detailed execution log of entire validation process, always enabled. All Noetic ecosystem components must support comprehensive logging/tracing from the ground up, using OpenTelemetry where applicable
 - Q: How should the system handle different versions of the policy format? → A: Hybrid approach (configurable) - version detection with backward compatibility (support current version plus one previous) AND optional automatic migration to upgrade older policies to current format
-- Q: What level of completeness should the standard library policies demonstrate? → A: Production-ready - comprehensive coverage including edge cases, gas optimization (for Solidity compilation target), and security hardening to fully prove the Noetic Policy design
+- Q: What level of completeness should the standard library policies demonstrate? → A: Production-ready - must pass the multi-layer verification suite (Layer 1: static verification, Layer 2: property-based testing, Layer 3: scenario-based edge case testing, Layer 4: security audit) including edge cases, gas optimization (for Solidity compilation target), and security hardening to fully prove the Noetic Policy design
 - Q: Which specific validation checks should run in fast mode vs thorough mode? → A: Fast mode includes schema validation, constraint syntax checking, and basic reachability analysis (completes in <1 second). Thorough mode includes all fast mode checks plus cycle detection, invariant consistency verification, and comprehensive edge case analysis (no time constraint)
 - Q: What specific threshold values should trigger resource consumption warnings? → A: Configurable thresholds with sensible defaults - Default CPU: 5 seconds, Default Memory: 1 GB. Users can override via config file or environment variables to accommodate different deployment scenarios (developer laptops vs CI servers)
 - Q: What format should error messages follow? → A: Machine-readable + human-readable hybrid - JSON format for programmatic access (with fields: code, severity, message, location, suggestion, docs_url) and structured human-readable format for CLI output (with error codes, line/column info, fix suggestions, and documentation links)
@@ -92,6 +92,8 @@ A developer wants to use common policy patterns (token transfer, voting, escrow)
 
 ## Requirements *(mandatory)*
 
+**Note**: Non-functional requirements (performance, security, observability, usability) are integrated into the functional requirements below rather than listed separately. Examples: FR-016/SC-001 (performance), FR-013/FR-014 (security), FR-018/FR-019 (observability), FR-009/SC-009 (usability).
+
 ### Functional Requirements
 
 - **FR-001**: System MUST parse policy files written in standard format
@@ -153,7 +155,7 @@ A developer wants to use common policy patterns (token transfer, voting, escrow)
 
 - **SC-001**: Developers can validate policies in fast mode and receive basic validation results in under 1 second regardless of policy size
 - **SC-002**: Static analysis in thorough mode correctly identifies 100% of unreachable states and deadlocks in test suite policies
-- **SC-003**: Error messages allow developers to fix 90% of policy errors without consulting documentation
+- **SC-003**: Error messages allow developers to fix 90% of policy errors without consulting documentation (measured via user testing with 10+ developers on a standardized error corpus representing common policy mistakes)
 - **SC-004**: All four standard library policies (token transfer, voting, escrow, research agent) pass the complete multi-layer verification suite (static verification, property-based testing, scenario-based testing, security audit) demonstrating quantifiable production-ready quality
 - **SC-005**: Parsed policy data structures can be programmatically accessed and manipulated by other packages
 - **SC-006**: The policy specification format can express all requirements needed for production-ready ERC-20 token contracts including edge cases, security constraints, and gas optimization considerations
